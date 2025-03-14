@@ -11,34 +11,44 @@ type model struct {
 	game Game
 }
 
-func initialModel() model {
+func initialModel(pch <-chan []Player, cch chan<- Command) model {
 	return model{
 		Game{
 			field_x:        50,
 			field_y:        30,
 			emptyFiledRune: '.',
-			players: []Player{
-				Player{x: 3, y: 5, playerRune: 'K'},
-				Player{x: 14, y: 27, playerRune: 'S'},
-			},
+			players:        []Player{},
+			commandsChan:   cch,
+			playersChan:    pch,
 		},
 	}
 }
 func (m model) Init() tea.Cmd {
-	return nil
+	return receiveState(m.game.playersChan)
 }
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
+	case []Player:
+		m.game.players = msg
+		return m, receiveState(m.game.playersChan)
 	case tea.KeyMsg:
-
 		switch msg.String() {
-
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "up", "k":
+			m.game.MoveMe(UP)
+			return m, nil
+		case "down", "j":
+			m.game.MoveMe(DOWN)
+			return m, nil
+		case "left", "h":
+			m.game.MoveMe(LEFT)
+			return m, nil
+		case "right", "l":
+			m.game.MoveMe(RIGHT)
+			return m, nil
 		}
 	}
-
 	return m, nil
 }
 
@@ -46,58 +56,15 @@ func (m model) View() string {
 	return m.game.Render()
 }
 
-type Player struct {
-	playerRune rune
-	x          int
-	y          int
-}
-
-type Game struct {
-	field_x        int
-	field_y        int
-	emptyFiledRune rune
-	players        []Player
-}
-
-type Comand struct {
-  asd string,
-}
-
-func (g *Game) ProcessCommand (cmd Comand) {
-  switch cmd.type {
-  case "d":
-    
-  }
-
-}
-
-func debug(s string) {
-	fmt.Printf("--->%s<---", s)
-}
-
-func (g *Game) Render() string {
-	field := [][]rune{}
-	for range g.field_y {
-		row := []rune{}
-		for range g.field_x {
-			row = append(row, g.emptyFiledRune)
-		}
-		field = append(field, row)
+func receiveState(pch <-chan []Player) tea.Cmd {
+	return func() tea.Msg {
+		return <-pch
 	}
-
-	for _, p := range g.players {
-		field[p.y][p.x] = p.playerRune
-	}
-
-	res := ""
-	for _, row := range field {
-		res += string(row) + "\n"
-	}
-	return res
 }
 
 func main() {
-	p := tea.NewProgram(initialModel())
+	playersChan, commandsChan := runMockServer()
+	p := tea.NewProgram(initialModel(playersChan, commandsChan))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
