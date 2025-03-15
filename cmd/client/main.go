@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	types "github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
 	tea "github.com/charmbracelet/bubbletea"
 	"os"
 	"time"
@@ -12,8 +13,8 @@ type model struct {
 }
 
 type Connection struct {
-	gameStateChan <-chan GameState
-	commandsChan  chan<- Command
+	gameStateChan <-chan types.GameState
+	commandsChan  chan<- types.Command
 }
 
 func initialModel(conn Connection) model {
@@ -33,7 +34,7 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case GameState:
+	case types.GameState:
 		m.game.currentState = msg
 		return m, receiveState(m.game.connection.gameStateChan)
 	case tea.KeyMsg:
@@ -41,16 +42,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "up", "k":
-			m.game.MoveMe(UP)
+			m.game.MoveMe(types.UP)
 			return m, nil
 		case "down", "j":
-			m.game.MoveMe(DOWN)
+			m.game.MoveMe(types.DOWN)
 			return m, nil
 		case "left", "h":
-			m.game.MoveMe(LEFT)
+			m.game.MoveMe(types.LEFT)
 			return m, nil
 		case "right", "l":
-			m.game.MoveMe(RIGHT)
+			m.game.MoveMe(types.RIGHT)
 			return m, nil
 		}
 	}
@@ -61,36 +62,17 @@ func (m model) View() string {
 	return m.game.Render()
 }
 
-func receiveState(pch <-chan GameState) tea.Cmd {
+func receiveState(pch <-chan types.GameState) tea.Cmd {
 	return func() tea.Msg {
 		return <-pch
 	}
-}
-
-type Command = int
-
-const (
-	UP = iota
-	DOWN
-	LEFT
-	RIGHT
-)
-
-type Player struct {
-	playerRune rune
-	x          int
-	y          int
-}
-
-type GameState struct {
-	players []Player
 }
 
 type LocalGame struct {
 	field_x        int
 	field_y        int
 	emptyFiledRune rune
-	currentState   GameState
+	currentState   types.GameState
 	connection     Connection
 }
 
@@ -104,8 +86,8 @@ func (g *LocalGame) Render() string {
 		field = append(field, row)
 	}
 
-	for _, p := range g.currentState.players {
-		field[p.y][p.x] = p.playerRune
+	for _, p := range g.currentState.Players {
+		field[p.Y][p.X] = p.PlayerRune
 	}
 
 	res := ""
@@ -115,19 +97,19 @@ func (g *LocalGame) Render() string {
 	return res
 }
 
-func (g *LocalGame) MoveMe(direction Command) {
+func (g *LocalGame) MoveMe(direction types.Command) {
 	g.connection.commandsChan <- direction
 }
 
 // "Mocked" runMockServer from which we receive game state,
 // and to which we send commands
 func runMockServer() Connection {
-	gsch := make(chan GameState)
-	cch := make(chan Command)
+	gsch := make(chan types.GameState)
+	cch := make(chan types.Command)
 
-	players := []Player{
-		{x: 3, y: 5, playerRune: 'K'},
-		{x: 14, y: 27, playerRune: 'S'},
+	players := []types.Player{
+		{X: 3, Y: 5, PlayerRune: 'K'},
+		{X: 14, Y: 27, PlayerRune: 'S'},
 	}
 
 	go func() {
@@ -135,20 +117,20 @@ func runMockServer() Connection {
 		for {
 			select {
 			case <-mockBotMovementTicker.C:
-				players[1].y--
-				gsch <- GameState{players}
+				players[1].Y--
+				gsch <- types.GameState{Players: players}
 			case direction := <-cch:
 				switch direction {
-				case UP:
-					players[0].y--
-				case DOWN:
-					players[0].y++
-				case LEFT:
-					players[0].x--
-				case RIGHT:
-					players[0].x++
+				case types.UP:
+					players[0].Y--
+				case types.DOWN:
+					players[0].Y++
+				case types.LEFT:
+					players[0].X--
+				case types.RIGHT:
+					players[0].X++
 				}
-				gsch <- GameState{players}
+				gsch <- types.GameState{Players: players}
 			}
 		}
 	}()
