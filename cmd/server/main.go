@@ -100,7 +100,7 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 
 func (ge *GameEngine) Run() {
 	for ec := range ge.engineInput {
-		fmt.Printf("new command: %v", ec)
+		fmt.Printf("new command: %v\n", ec)
 		ge.applyCommand(ec)
 		for _, cli := range ge.conns {
 			cli.write <- ge.state
