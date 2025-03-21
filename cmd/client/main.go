@@ -4,9 +4,12 @@ import (
 	"fmt"
 	types "github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
 	tea "github.com/charmbracelet/bubbletea"
+	"io"
+	"net"
 	"os"
-	"time"
 )
+
+const SERVER_ADDRESS = "127.0.0.1:8000"
 
 type model struct {
 	game LocalGame
@@ -101,41 +104,48 @@ func (g *LocalGame) MoveMe(direction types.Command) {
 	g.connection.commandsChan <- direction
 }
 
-// "Mocked" runMockServer from which we receive game state,
-// and to which we send commands
-func runMockServer() Connection {
-	gsch := make(chan types.GameState)
-	cch := make(chan types.Command)
-
-	players := []types.Player{
-		{X: 3, Y: 5, PlayerRune: 'K'},
-		{X: 14, Y: 27, PlayerRune: 'S'},
+func connectToServer(serverAddress string) Connection {
+	conn, err := net.Dial("tcp", serverAddress)
+	if err != nil {
+		fmt.Println("Error connecting:", err)
+		os.Exit(1)
 	}
 
+	fmt.Println("Connected to", serverAddress)
+
+	gameStateChannel := make(chan types.GameState)
 	go func() {
-		mockBotMovementTicker := time.NewTicker(time.Second)
 		for {
-			select {
-			case <-mockBotMovementTicker.C:
-				players[1].Y--
-				gsch <- types.GameState{Players: players}
-			case direction := <-cch:
-				switch direction {
-				case types.UP:
-					players[0].Y--
-				case types.DOWN:
-					players[0].Y++
-				case types.LEFT:
-					players[0].X--
-				case types.RIGHT:
-					players[0].X++
-				}
-				gsch <- types.GameState{Players: players}
+			buff := make([]byte, 1, 1)
+			_, err := io.ReadFull(conn, buff)
+			if err == io.EOF {
+				continue
+			}
+			if err != nil {
+				panic(err)
+			}
+			gameStateSize := buff[0] * 16
+			buff = make([]byte, gameStateSize, gameStateSize)
+			_, err = io.ReadFull(conn, buff)
+			if err != nil {
+				panic(err)
+			}
+			gs := types.GameStateFromBytes(buff)
+			gameStateChannel <- gs
+		}
+	}()
+
+	commandChannel := make(chan types.Command)
+	go func() {
+		for cmd := range commandChannel {
+			_, err := conn.Write([]byte{byte(cmd)})
+			if err != nil {
+				panic(err)
 			}
 		}
 	}()
 
-	return Connection{gsch, cch}
+	return Connection{gameStateChannel, commandChannel}
 }
 
 func debug(s string) {
@@ -143,7 +153,7 @@ func debug(s string) {
 }
 
 func main() {
-	conn := runMockServer()
+	conn := connectToServer(SERVER_ADDRESS)
 	p := tea.NewProgram(initialModel(conn))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)

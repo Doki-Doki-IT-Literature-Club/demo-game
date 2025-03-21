@@ -69,6 +69,9 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 		for {
 			buff := make([]byte, 1, 1)
 			_, err := io.ReadFull(conn, buff)
+			if err == io.EOF {
+				continue
+			}
 			if err != nil {
 				panic(err)
 			}

@@ -38,3 +38,18 @@ func (gs *GameState) ToBytes() []byte {
 	}
 	return res
 }
+
+func GameStateFromBytes(data []byte) GameState {
+	gs := GameState{[]Player{}}
+	for i := 0; i < len(data)/16; i++ {
+		k := i * 16
+		p := Player{
+			ID:         PlayerID(binary.BigEndian.Uint32(data[k : k+4])),
+			PlayerRune: rune(binary.BigEndian.Uint32(data[k+4 : k+8])),
+			X:          binary.BigEndian.Uint32(data[k+8 : k+12]),
+			Y:          binary.BigEndian.Uint32(data[k+12 : k+16]),
+		}
+		gs.Players = append(gs.Players, p)
+	}
+	return gs
+}
