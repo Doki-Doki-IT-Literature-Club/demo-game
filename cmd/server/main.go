@@ -2,60 +2,63 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
+	"slices"
 	"sync"
+
+	"github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
 )
 
 type ClinetConn struct {
-	// TODO: state struct
-	write chan<- []byte
+	write chan<- types.GameState
 }
 
-type Player struct {
-	x int
-	y int
-}
-
-type GameState struct {
-	players []Player
+type engineCommand struct {
+	playerID types.PlayerID
+	command  types.Command
 }
 
 type GameEngine struct {
-	conns []*ClinetConn
-	state GameState
-	// TODO: commands struct
-	engineInput chan []byte
+	newPlayerID types.PlayerID
+	conns       []*ClinetConn
+	state       types.GameState
+	engineInput chan engineCommand
 
 	mu sync.Mutex
 }
 
-func (ge *GameEngine) addPlayer(conn *ClinetConn) {
+func (ge *GameEngine) addPlayer(conn *ClinetConn) types.PlayerID {
 	ge.mu.Lock()
 	defer ge.mu.Unlock()
 
+	newID := ge.newPlayerID
+	ge.newPlayerID++
 	ge.conns = append(ge.conns, conn)
-	ge.state.players = append(
-		ge.state.players,
-		Player{
-			x: len(ge.state.players),
-			y: len(ge.state.players),
+	ge.state.Players = append(
+		ge.state.Players,
+		types.Player{
+			ID:         newID,
+			PlayerRune: 'G',
+			X:          uint32(len(ge.state.Players)),
+			Y:          uint32(len(ge.state.Players)),
 		},
 	)
+	return newID
 }
 
 func (ge *GameEngine) HangleConnection(conn net.Conn) {
 	fmt.Printf("New connection: %v\n", conn)
 
-	write := make(chan []byte)
+	write := make(chan types.GameState)
 
 	cliConn := &ClinetConn{write}
 
-	ge.addPlayer(cliConn)
+	playerID := ge.addPlayer(cliConn)
 
 	go func() {
-		for data := range write {
-			// TODO struct -> bytes
-			_, err := conn.Write(data)
+		for state := range write {
+			_, err := conn.Write(state.ToBytes())
 			if err != nil {
 				panic(err)
 			}
@@ -64,33 +67,49 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 
 	go func() {
 		for {
-			buff := [1024]byte{}
-			n, err := conn.Read(buff[:])
+			buff := make([]byte, 1, 1)
+			_, err := io.ReadFull(conn, buff)
 			if err != nil {
 				panic(err)
 			}
-			// TODO make structs from bytes
-			ge.engineInput <- buff[:n]
+			ge.engineInput <- engineCommand{command: types.Command(buff[0]), playerID: playerID}
 		}
 	}()
 	// TODO: handle connection close
 }
 
+func (ge *GameEngine) applyCommand(cmd engineCommand) {
+	playerIDX := slices.IndexFunc(ge.state.Players, func(p types.Player) bool { return p.ID == cmd.playerID })
+	if playerIDX == -1 {
+		return
+	}
+	switch cmd.command {
+	case types.UP:
+		ge.state.Players[playerIDX].Y--
+	case types.DOWN:
+		ge.state.Players[playerIDX].Y++
+	case types.LEFT:
+		ge.state.Players[playerIDX].X--
+	case types.RIGHT:
+		ge.state.Players[playerIDX].X++
+	}
+}
+
 func (ge *GameEngine) Run() {
-	for data := range ge.engineInput {
-		// TODO: handle commands
-		fmt.Printf("Got data in Run: %v\n", data)
+	for ec := range ge.engineInput {
+		fmt.Printf("new command: %v", ec)
+		ge.applyCommand(ec)
 		for _, cli := range ge.conns {
-			cli.write <- data
+			cli.write <- ge.state
 		}
 	}
 }
 
 func RunGameEngine() *GameEngine {
 	ge := &GameEngine{
-		state:       GameState{players: []Player{}},
+		state:       types.GameState{Players: []types.Player{}},
 		conns:       []*ClinetConn{},
-		engineInput: make(chan []byte),
+		engineInput: make(chan engineCommand),
 	}
 	go ge.Run()
 	return ge
