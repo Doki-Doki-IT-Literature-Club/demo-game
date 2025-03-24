@@ -86,15 +86,24 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	if playerIDX == -1 {
 		return
 	}
+	player := &ge.state.Players[playerIDX]
 	switch cmd.command {
 	case types.UP:
-		ge.state.Players[playerIDX].Y--
+		if player.Y > 0 {
+			player.Y--
+		}
 	case types.DOWN:
-		ge.state.Players[playerIDX].Y++
+		if player.Y < types.FieldMaxY-1 {
+			player.Y++
+		}
 	case types.LEFT:
-		ge.state.Players[playerIDX].X--
+		if player.X > 0 {
+			player.X--
+		}
 	case types.RIGHT:
-		ge.state.Players[playerIDX].X++
+		if player.X < types.FieldMaxX-1 {
+			player.X++
+		}
 	}
 }
 

@@ -15,6 +15,9 @@ const (
 	RIGHT = 0x04
 )
 
+const FieldMaxX = 50
+const FieldMaxY = 30
+
 type Player struct {
 	ID         PlayerID
 	PlayerRune rune

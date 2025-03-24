@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-const SERVER_ADDRESS = "127.0.0.1:8000"
+const SERVER_ADDRESS = "localhost:8000"
 
 type model struct {
 	game LocalGame
@@ -23,8 +23,8 @@ type Connection struct {
 func initialModel(conn Connection) model {
 	return model{
 		LocalGame{
-			field_x:        50,
-			field_y:        30,
+			field_x:        types.FieldMaxX,
+			field_y:        types.FieldMaxY,
 			emptyFiledRune: '.',
 			connection:     conn,
 		},
