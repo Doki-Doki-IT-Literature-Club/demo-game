@@ -5,9 +5,12 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
 )
+
+const gameTick = 10 * time.Millisecond
 
 type ClinetConn struct {
 	write chan<- types.GameState
@@ -39,6 +42,8 @@ func (ge *GameEngine) addPlayer(conn *ClinetConn) types.PlayerID {
 		PlayerRune: 'G',
 		X:          uint32(len(ge.state.Players)),
 		Y:          uint32(len(ge.state.Players)),
+		Xf:         float32(len(ge.state.Players)),
+		Yf:         float32(len(ge.state.Players)),
 	}
 	return newID
 }
@@ -94,30 +99,38 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	}
 	switch cmd.command {
 	case types.UP:
-		if player.Y > 0 {
-			player.Y--
+		if player.Yf >= 1 {
+			player.Yf--
 		}
 	case types.DOWN:
-		if player.Y < types.FieldMaxY-1 {
-			player.Y++
+		if player.Yf < types.FieldMaxY-1 {
+			player.Yf++
 		}
 	case types.LEFT:
-		if player.X > 0 {
-			player.X--
+		if player.Xf >= 1 {
+			player.Xf--
 		}
 	case types.RIGHT:
-		if player.X < types.FieldMaxX-1 {
-			player.X++
+		if player.Xf < types.FieldMaxX-1 {
+			player.Xf++
 		}
 	}
 }
 
 func (ge *GameEngine) Run() {
-	for ec := range ge.engineInput {
-		fmt.Printf("new command: %v\n", ec)
-		ge.applyCommand(ec)
-		for _, cli := range ge.conns {
-			cli.write <- ge.state
+	ticker := time.NewTicker(gameTick)
+	for {
+		select {
+		case ec := <-ge.engineInput:
+			fmt.Printf("new command: %v\n", ec)
+			ge.applyCommand(ec)
+		case <-ticker.C:
+			for pid := range ge.state.Players {
+				ge.applyCommand(engineCommand{playerID: pid, command: types.DOWN})
+			}
+			for _, cli := range ge.conns {
+				cli.write <- ge.state
+			}
 		}
 	}
 }

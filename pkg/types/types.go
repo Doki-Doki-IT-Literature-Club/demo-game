@@ -23,6 +23,8 @@ type Player struct {
 	PlayerRune rune
 	X          uint32
 	Y          uint32
+	Xf         float32
+	Yf         float32
 }
 
 type GameState struct {
