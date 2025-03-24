@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"slices"
 	"sync"
 
 	"github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
@@ -21,7 +20,7 @@ type engineCommand struct {
 
 type GameEngine struct {
 	newPlayerID types.PlayerID
-	conns       []*ClinetConn
+	conns       map[types.PlayerID]*ClinetConn
 	state       types.GameState
 	engineInput chan engineCommand
 
@@ -34,17 +33,23 @@ func (ge *GameEngine) addPlayer(conn *ClinetConn) types.PlayerID {
 
 	newID := ge.newPlayerID
 	ge.newPlayerID++
-	ge.conns = append(ge.conns, conn)
-	ge.state.Players = append(
-		ge.state.Players,
-		types.Player{
-			ID:         newID,
-			PlayerRune: 'G',
-			X:          uint32(len(ge.state.Players)),
-			Y:          uint32(len(ge.state.Players)),
-		},
-	)
+	ge.conns[newID] = conn
+	ge.state.Players[newID] = &types.Player{
+		ID:         newID,
+		PlayerRune: 'G',
+		X:          uint32(len(ge.state.Players)),
+		Y:          uint32(len(ge.state.Players)),
+	}
 	return newID
+}
+
+func (ge *GameEngine) disconnectPlayer(playerID types.PlayerID) {
+	ge.mu.Lock()
+	defer ge.mu.Unlock()
+
+	delete(ge.state.Players, playerID)
+	delete(ge.conns, playerID)
+
 }
 
 func (ge *GameEngine) HangleConnection(conn net.Conn) {
@@ -60,7 +65,8 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 		for state := range write {
 			_, err := conn.Write(state.ToBytes())
 			if err != nil {
-				panic(err)
+				ge.disconnectPlayer(playerID)
+				return
 			}
 		}
 	}()
@@ -73,20 +79,19 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 				continue
 			}
 			if err != nil {
-				panic(err)
+				ge.disconnectPlayer(playerID)
+				return
 			}
 			ge.engineInput <- engineCommand{command: types.Command(buff[0]), playerID: playerID}
 		}
 	}()
-	// TODO: handle connection close
 }
 
 func (ge *GameEngine) applyCommand(cmd engineCommand) {
-	playerIDX := slices.IndexFunc(ge.state.Players, func(p types.Player) bool { return p.ID == cmd.playerID })
-	if playerIDX == -1 {
+	player, ok := ge.state.Players[cmd.playerID]
+	if !ok {
 		return
 	}
-	player := &ge.state.Players[playerIDX]
 	switch cmd.command {
 	case types.UP:
 		if player.Y > 0 {
@@ -119,8 +124,8 @@ func (ge *GameEngine) Run() {
 
 func RunGameEngine() *GameEngine {
 	ge := &GameEngine{
-		state:       types.GameState{Players: []types.Player{}},
-		conns:       []*ClinetConn{},
+		state:       types.GameState{Players: map[types.PlayerID]*types.Player{}},
+		conns:       map[types.PlayerID]*ClinetConn{},
 		engineInput: make(chan engineCommand),
 	}
 	go ge.Run()

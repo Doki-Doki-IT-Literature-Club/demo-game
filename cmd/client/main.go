@@ -148,10 +148,6 @@ func connectToServer(serverAddress string) Connection {
 	return Connection{gameStateChannel, commandChannel}
 }
 
-func debug(s string) {
-	fmt.Printf("--->%s<---", s)
-}
-
 func main() {
 	conn := connectToServer(SERVER_ADDRESS)
 	p := tea.NewProgram(initialModel(conn))

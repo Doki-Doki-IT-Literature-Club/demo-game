@@ -26,7 +26,7 @@ type Player struct {
 }
 
 type GameState struct {
-	Players []Player
+	Players map[PlayerID]*Player
 }
 
 func (gs *GameState) ToBytes() []byte {
@@ -43,16 +43,18 @@ func (gs *GameState) ToBytes() []byte {
 }
 
 func GameStateFromBytes(data []byte) GameState {
-	gs := GameState{[]Player{}}
+	gs := GameState{map[PlayerID]*Player{}}
 	for i := 0; i < len(data)/16; i++ {
 		k := i * 16
+
+		playerID := PlayerID(binary.BigEndian.Uint32(data[k : k+4]))
 		p := Player{
-			ID:         PlayerID(binary.BigEndian.Uint32(data[k : k+4])),
+			ID:         playerID,
 			PlayerRune: rune(binary.BigEndian.Uint32(data[k+4 : k+8])),
 			X:          binary.BigEndian.Uint32(data[k+8 : k+12]),
 			Y:          binary.BigEndian.Uint32(data[k+12 : k+16]),
 		}
-		gs.Players = append(gs.Players, p)
+		gs.Players[playerID] = &p
 	}
 	return gs
 }
