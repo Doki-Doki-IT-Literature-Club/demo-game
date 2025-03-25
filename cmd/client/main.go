@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-const SERVER_ADDRESS = "localhost:8000"
+const defaultServerAddress = "localhost:8000"
 
 type model struct {
 	game LocalGame
@@ -149,7 +149,11 @@ func connectToServer(serverAddress string) Connection {
 }
 
 func main() {
-	conn := connectToServer(SERVER_ADDRESS)
+	serverAddress := defaultServerAddress
+	if len(os.Args) > 1 {
+		serverAddress = os.Args[1]
+	}
+	conn := connectToServer(serverAddress)
 	p := tea.NewProgram(initialModel(conn))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)

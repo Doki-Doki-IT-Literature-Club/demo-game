@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
 )
 
-const gameTick = 10 * time.Millisecond
+const (
+	gameTick    = 10 * time.Millisecond
+	defaultPort = 8000
+)
 
 type ClinetConn struct {
 	write chan<- types.GameState
@@ -146,13 +150,19 @@ func RunGameEngine() *GameEngine {
 }
 
 func main() {
-	// TODO: accept port, ideally to start both server and ngrok
+	port := fmt.Sprintf("%d", defaultPort)
 
-	fmt.Println("starting server")
+	if len(os.Args) > 1 {
+		port = os.Args[1]
+	}
+
+	addr := "0.0.0.0:" + port
+
+	fmt.Printf("starting server on %s\n", addr)
 
 	ge := RunGameEngine()
 
-	listner, err := net.Listen("tcp", "0.0.0.0:8000")
+	listner, err := net.Listen("tcp", addr)
 	if err != nil {
 		panic(err)
 	}
