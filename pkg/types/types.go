@@ -18,13 +18,30 @@ const (
 const FieldMaxX = 50
 const FieldMaxY = 30
 
+type Vector struct {
+	X int32
+	Y int32
+}
+
+func (v *Vector) Add(other Vector) {
+	v.X += other.X
+	v.Y += other.Y
+}
+
 type Player struct {
 	ID         PlayerID
 	PlayerRune rune
 	X          uint32
 	Y          uint32
-	Xf         float32
-	Yf         float32
+	Vec        Vector
+}
+
+func (p *Player) ApplyVec() {
+	tx := int32(p.X) + p.Vec.X
+	ty := int32(p.Y) + p.Vec.Y
+
+	p.X = uint32(min(max(0, tx), FieldMaxX-1))
+	p.Y = uint32(min(max(0, ty), FieldMaxY-1))
 }
 
 type GameState struct {

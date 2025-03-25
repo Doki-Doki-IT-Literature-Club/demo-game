@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"os"
 	"sync"
@@ -12,7 +13,7 @@ import (
 )
 
 const (
-	gameTick    = 10 * time.Millisecond
+	gameTick    = 100 * time.Millisecond
 	defaultPort = 8000
 )
 
@@ -46,8 +47,6 @@ func (ge *GameEngine) addPlayer(conn *ClinetConn) types.PlayerID {
 		PlayerRune: 'G',
 		X:          uint32(len(ge.state.Players)),
 		Y:          uint32(len(ge.state.Players)),
-		Xf:         float32(len(ge.state.Players)),
-		Yf:         float32(len(ge.state.Players)),
 	}
 	return newID
 }
@@ -96,6 +95,27 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 	}()
 }
 
+func (ge *GameEngine) calculateState() {
+	for _, player := range ge.state.Players {
+		player.ApplyVec()
+		fmt.Printf("%+v\n", player)
+
+		v := types.Vector{}
+		if player.Vec.X != 0 {
+			v.X = -player.Vec.X / int32(math.Abs(float64(player.Vec.X)))
+		}
+		if player.Vec.Y != 0 {
+			v.Y = -player.Vec.Y / int32(math.Abs(float64(player.Vec.Y)))
+		}
+
+		// "gravity"
+		if player.Y != types.FieldMaxY-1 {
+			v.Y += 1
+		}
+		player.Vec.Add(v)
+	}
+}
+
 func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	player, ok := ge.state.Players[cmd.playerID]
 	if !ok {
@@ -103,21 +123,13 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	}
 	switch cmd.command {
 	case types.UP:
-		if player.Yf >= 1 {
-			player.Yf--
-		}
+		player.Vec.Add(types.Vector{X: 0, Y: -3})
 	case types.DOWN:
-		if player.Yf < types.FieldMaxY-1 {
-			player.Yf++
-		}
+		player.Vec.Add(types.Vector{X: 0, Y: 3})
 	case types.LEFT:
-		if player.Xf >= 1 {
-			player.Xf--
-		}
+		player.Vec.Add(types.Vector{X: -3, Y: 0})
 	case types.RIGHT:
-		if player.Xf < types.FieldMaxX-1 {
-			player.Xf++
-		}
+		player.Vec.Add(types.Vector{X: 3, Y: 0})
 	}
 }
 
@@ -126,12 +138,10 @@ func (ge *GameEngine) Run() {
 	for {
 		select {
 		case ec := <-ge.engineInput:
-			fmt.Printf("new command: %v\n", ec)
+			fmt.Printf("new command: %+v\n", ec)
 			ge.applyCommand(ec)
 		case <-ticker.C:
-			for pid := range ge.state.Players {
-				ge.applyCommand(engineCommand{playerID: pid, command: types.DOWN})
-			}
+			ge.calculateState()
 			for _, cli := range ge.conns {
 				cli.write <- ge.state
 			}
