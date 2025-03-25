@@ -146,6 +146,7 @@ func RunGameEngine() *GameEngine {
 }
 
 func main() {
+	// TODO: accept port, ideally to start both server and ngrok
 
 	fmt.Println("starting server")
 
