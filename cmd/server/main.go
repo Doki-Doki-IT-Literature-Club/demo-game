@@ -45,8 +45,10 @@ func (ge *GameEngine) addPlayer(conn *ClinetConn) types.PlayerID {
 	ge.state.Players[newID] = &types.Player{
 		ID:         newID,
 		PlayerRune: 'G',
-		X:          uint32(len(ge.state.Players)),
-		Y:          uint32(len(ge.state.Players)),
+		Position: types.Vector{
+			X: float64(len(ge.state.Players)),
+			Y: float64(len(ge.state.Players)),
+		},
 	}
 	return newID
 }
@@ -101,31 +103,30 @@ func (ge *GameEngine) MovePlayer(playerID types.PlayerID) {
 	singleVector := p.Vec.SingleVector()
 	maxIterations := int32(math.Round(p.Vec.GetLen()))
 
-	lastPossibleX := p.X
-	lastPossibleY := p.Y
+	lastPossible := types.Vector{p.Position.X, p.Position.Y}
 
 movementLoop:
 	for i := range maxIterations {
 		possibleMovement := singleVector.Multiply(float64(i + 1))
-		possibleX := uint32(math.Round(float64(p.X) + possibleMovement.X))
-		possibleY := uint32(math.Round(float64(p.Y) + possibleMovement.Y))
+		possiblePosition := p.Position.Add(possibleMovement)
 
 		for pid, player := range ge.state.Players {
 			if pid == p.ID {
 				continue
 			}
-			if possibleX == player.X && possibleY == player.Y {
+			if possiblePosition == player.Position {
 				break movementLoop
 			}
-			if possibleX >= types.FieldMaxX || possibleY >= types.FieldMaxY || possibleX < 0 || possibleY < 0 {
+			if possiblePosition.X >= types.FieldMaxX-1 ||
+				possiblePosition.Y >= types.FieldMaxY-1 ||
+				possiblePosition.X < 0 ||
+				possiblePosition.Y < 0 {
 				break movementLoop
 			}
 		}
-		lastPossibleX = possibleX
-		lastPossibleY = possibleY
+		lastPossible = possiblePosition
 	}
-	p.X = lastPossibleX
-	p.Y = lastPossibleY
+	p.Position = lastPossible
 }
 
 func (ge *GameEngine) calculateState() {
@@ -142,7 +143,7 @@ func (ge *GameEngine) calculateState() {
 		}
 
 		// "gravity"
-		if player.Y != types.FieldMaxY-1 {
+		if player.Position.Y != types.FieldMaxY-1 {
 			v.Y += 1
 		}
 		player.Vec = v

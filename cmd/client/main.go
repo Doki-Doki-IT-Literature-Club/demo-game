@@ -90,7 +90,7 @@ func (g *LocalGame) Render() string {
 	}
 
 	for _, p := range g.currentState.Players {
-		field[p.Y][p.X] = p.PlayerRune
+		field[int32(p.Position.Y)][int32(p.Position.X)] = p.PlayerRune
 	}
 
 	res := ""
