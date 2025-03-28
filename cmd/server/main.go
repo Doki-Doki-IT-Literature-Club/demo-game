@@ -95,24 +95,57 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 	}()
 }
 
+func (ge *GameEngine) MovePlayer(playerID types.PlayerID) {
+	p := ge.state.Players[playerID]
+
+	singleVector := p.Vec.SingleVector()
+	maxIterations := int32(math.Round(p.Vec.GetLen()))
+
+	lastPossibleX := p.X
+	lastPossibleY := p.Y
+
+movementLoop:
+	for i := range maxIterations {
+		possibleMovement := singleVector.Multiply(float64(i + 1))
+		possibleX := uint32(math.Round(float64(p.X) + possibleMovement.X))
+		possibleY := uint32(math.Round(float64(p.Y) + possibleMovement.Y))
+
+		for pid, player := range ge.state.Players {
+			if pid == p.ID {
+				continue
+			}
+			if possibleX == player.X && possibleY == player.Y {
+				break movementLoop
+			}
+			if possibleX >= types.FieldMaxX || possibleY >= types.FieldMaxY || possibleX < 0 || possibleY < 0 {
+				break movementLoop
+			}
+		}
+		lastPossibleX = possibleX
+		lastPossibleY = possibleY
+	}
+	p.X = lastPossibleX
+	p.Y = lastPossibleY
+}
+
 func (ge *GameEngine) calculateState() {
-	for _, player := range ge.state.Players {
-		player.ApplyVec()
+	for pid, player := range ge.state.Players {
+		ge.MovePlayer(pid)
 		fmt.Printf("%+v\n", player)
 
 		v := types.Vector{}
 		if player.Vec.X != 0 {
-			v.X = -player.Vec.X / int32(math.Abs(float64(player.Vec.X)))
+			v.X = -player.Vec.X / math.Abs(float64(player.Vec.X))
 		}
 		if player.Vec.Y != 0 {
-			v.Y = -player.Vec.Y / int32(math.Abs(float64(player.Vec.Y)))
+			v.Y = -player.Vec.Y / math.Abs(float64(player.Vec.Y))
 		}
 
 		// "gravity"
 		if player.Y != types.FieldMaxY-1 {
 			v.Y += 1
 		}
-		player.Vec.Add(v)
+		player.Vec = v
 	}
 }
 
@@ -123,13 +156,18 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	}
 	switch cmd.command {
 	case types.UP:
-		player.Vec.Add(types.Vector{X: 0, Y: -3})
+		player.Vec = player.Vec.Add(types.Vector{X: 0, Y: -3})
+		// TODO: update player direction, don't set Rune
+		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.DOWN:
-		player.Vec.Add(types.Vector{X: 0, Y: 3})
+		player.Vec = player.Vec.Add(types.Vector{X: 0, Y: 3})
+		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.LEFT:
-		player.Vec.Add(types.Vector{X: -3, Y: 0})
+		player.Vec = player.Vec.Add(types.Vector{X: -3, Y: 0})
+		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.RIGHT:
-		player.Vec.Add(types.Vector{X: 3, Y: 0})
+		player.Vec = player.Vec.Add(types.Vector{X: 3, Y: 0})
+		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	}
 }
 

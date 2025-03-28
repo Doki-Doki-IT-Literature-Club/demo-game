@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/binary"
+	"math"
 )
 
 type PlayerID uint32
@@ -15,17 +16,36 @@ const (
 	RIGHT = 0x04
 )
 
+var DirectionCharMap = map[Command]rune{
+	UP:    '^',
+	DOWN:  'V',
+	LEFT:  '<',
+	RIGHT: '>',
+}
+
 const FieldMaxX = 50
 const FieldMaxY = 30
 
 type Vector struct {
-	X int32
-	Y int32
+	X float64
+	Y float64
 }
 
-func (v *Vector) Add(other Vector) {
-	v.X += other.X
-	v.Y += other.Y
+func (v *Vector) Add(other Vector) Vector {
+	return Vector{v.X + other.X, v.Y + other.Y}
+}
+
+func (v *Vector) SingleVector() Vector {
+	vectorLen := v.GetLen()
+	return Vector{v.X / vectorLen, v.Y / vectorLen}
+}
+
+func (v *Vector) GetLen() float64 {
+	return math.Sqrt(math.Pow(float64(v.X), 2) + math.Pow(float64(v.Y), 2))
+}
+
+func (v *Vector) Multiply(a float64) Vector {
+	return Vector{v.X * a, v.Y * a}
 }
 
 type Player struct {
@@ -34,14 +54,6 @@ type Player struct {
 	X          uint32
 	Y          uint32
 	Vec        Vector
-}
-
-func (p *Player) ApplyVec() {
-	tx := int32(p.X) + p.Vec.X
-	ty := int32(p.Y) + p.Vec.Y
-
-	p.X = uint32(min(max(0, tx), FieldMaxX-1))
-	p.Y = uint32(min(max(0, ty), FieldMaxY-1))
 }
 
 type GameState struct {
