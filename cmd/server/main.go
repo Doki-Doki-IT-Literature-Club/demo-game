@@ -100,15 +100,25 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 func (ge *GameEngine) MovePlayer(playerID types.PlayerID) {
 	p := ge.state.Players[playerID]
 
-	singleVector := p.Vec.SingleVector()
-	maxIterations := int32(math.Round(p.Vec.GetLen()))
+	singleVector := p.Speed.SingleVector()
+	maxIterations := int32(math.Round(p.Speed.GetLen()))
 
-	lastPossible := types.Vector{p.Position.X, p.Position.Y}
+	lastPossible := types.Vector{X: p.Position.X, Y: p.Position.Y}
+	fmt.Printf("single vector: %+v\n", singleVector)
+	fmt.Printf("current position: %+v\n", lastPossible)
 
 movementLoop:
 	for i := range maxIterations {
 		possibleMovement := singleVector.Multiply(float64(i + 1))
 		possiblePosition := p.Position.Add(possibleMovement)
+		fmt.Printf("Possible position: %+v\n", possiblePosition)
+
+		if possiblePosition.X >= types.FieldMaxX-1 ||
+			possiblePosition.Y >= types.FieldMaxY-1 ||
+			possiblePosition.X < 0 ||
+			possiblePosition.Y < 0 {
+			break movementLoop
+		}
 
 		for pid, player := range ge.state.Players {
 			if pid == p.ID {
@@ -117,15 +127,10 @@ movementLoop:
 			if possiblePosition == player.Position {
 				break movementLoop
 			}
-			if possiblePosition.X >= types.FieldMaxX-1 ||
-				possiblePosition.Y >= types.FieldMaxY-1 ||
-				possiblePosition.X < 0 ||
-				possiblePosition.Y < 0 {
-				break movementLoop
-			}
 		}
 		lastPossible = possiblePosition
 	}
+	fmt.Printf("selected position: %+v\n", lastPossible)
 	p.Position = lastPossible
 }
 
@@ -134,19 +139,26 @@ func (ge *GameEngine) calculateState() {
 		ge.MovePlayer(pid)
 		fmt.Printf("%+v\n", player)
 
-		v := types.Vector{}
-		if player.Vec.X != 0 {
-			v.X = -player.Vec.X / math.Abs(float64(player.Vec.X))
+		// "slowing"
+		newSpeed := types.Vector{}
+		if player.Speed.X > 0 {
+			newSpeed.X = player.Speed.X - min(player.Speed.X, 1)
 		}
-		if player.Vec.Y != 0 {
-			v.Y = -player.Vec.Y / math.Abs(float64(player.Vec.Y))
+		if player.Speed.X < 0 {
+			newSpeed.X = player.Speed.X - max(player.Speed.X, -1)
+		}
+		if player.Speed.Y > 0 {
+			newSpeed.Y = player.Speed.Y - min(player.Speed.Y, 1)
+		}
+		if player.Speed.Y < 0 {
+			newSpeed.Y = player.Speed.Y - max(player.Speed.Y, -1)
 		}
 
 		// "gravity"
 		if player.Position.Y != types.FieldMaxY-1 {
-			v.Y += 1
+			newSpeed.Y += 1
 		}
-		player.Vec = v
+		player.Speed = newSpeed
 	}
 }
 
@@ -157,17 +169,17 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	}
 	switch cmd.command {
 	case types.UP:
-		player.Vec = player.Vec.Add(types.Vector{X: 0, Y: -3})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -3})
 		// TODO: update player direction, don't set Rune
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.DOWN:
-		player.Vec = player.Vec.Add(types.Vector{X: 0, Y: 3})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 3})
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.LEFT:
-		player.Vec = player.Vec.Add(types.Vector{X: -3, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: -3, Y: 0})
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.RIGHT:
-		player.Vec = player.Vec.Add(types.Vector{X: 3, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: 3, Y: 0})
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	}
 }

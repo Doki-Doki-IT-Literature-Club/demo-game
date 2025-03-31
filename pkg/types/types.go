@@ -37,11 +37,14 @@ func (v *Vector) Add(other Vector) Vector {
 
 func (v *Vector) SingleVector() Vector {
 	vectorLen := v.GetLen()
+	if math.IsNaN(vectorLen) {
+		return Vector{}
+	}
 	return Vector{v.X / vectorLen, v.Y / vectorLen}
 }
 
 func (v *Vector) GetLen() float64 {
-	return math.Sqrt(math.Pow(float64(v.X), 2) + math.Pow(float64(v.Y), 2))
+	return math.Sqrt(math.Pow(v.X, 2) + math.Pow(v.Y, 2))
 }
 
 func (v *Vector) Multiply(a float64) Vector {
@@ -52,7 +55,7 @@ type Player struct {
 	ID         PlayerID
 	PlayerRune rune
 	Position   Vector
-	Vec        Vector
+	Speed      Vector
 }
 
 type GameState struct {
