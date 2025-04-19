@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math"
 )
 
@@ -51,11 +52,19 @@ func (v *Vector) Multiply(a float64) Vector {
 	return Vector{v.X * a, v.Y * a}
 }
 
+func (v *Vector) ToString() string {
+	return fmt.Sprintf("{X: %.2f | Y: %.2f}", v.X, v.Y)
+}
+
 type Player struct {
 	ID         PlayerID
 	PlayerRune rune
 	Position   Vector
 	Speed      Vector
+}
+
+func (p *Player) ToString() string {
+	return fmt.Sprintf("Player: %c, Position: %s, Speed: %s", p.PlayerRune, p.Position.ToString(), p.Speed.ToString())
 }
 
 type GameState struct {

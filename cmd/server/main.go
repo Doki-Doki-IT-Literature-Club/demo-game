@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	gameTick    = 100 * time.Millisecond
+	gameTick    = 500 * time.Millisecond
 	defaultPort = 8000
 )
 
@@ -104,19 +104,40 @@ func (ge *GameEngine) MovePlayer(playerID types.PlayerID) {
 	maxIterations := int32(math.Round(p.Speed.GetLen()))
 
 	lastPossible := types.Vector{X: p.Position.X, Y: p.Position.Y}
-	fmt.Printf("single vector: %+v\n", singleVector)
-	fmt.Printf("current position: %+v\n", lastPossible)
+	fmt.Printf("single vector: %+v\n", singleVector.ToString())
+	fmt.Printf("current position: %+v\n", lastPossible.ToString())
 
 movementLoop:
 	for i := range maxIterations {
 		possibleMovement := singleVector.Multiply(float64(i + 1))
 		possiblePosition := p.Position.Add(possibleMovement)
-		fmt.Printf("Possible position: %+v\n", possiblePosition)
+		fmt.Printf("Possible position: %s\n", possiblePosition.ToString())
 
-		if possiblePosition.X >= types.FieldMaxX-1 ||
-			possiblePosition.Y >= types.FieldMaxY-1 ||
+		if possiblePosition.X >= types.FieldMaxX ||
+			possiblePosition.Y >= types.FieldMaxY ||
 			possiblePosition.X < 0 ||
 			possiblePosition.Y < 0 {
+
+			fmt.Printf("Break because of out of borders: %s\n", possiblePosition.ToString())
+			if possiblePosition.X >= types.FieldMaxX-1 {
+				possiblePosition.X = types.FieldMaxX - 1
+				p.Speed.X = 0
+			}
+			if possiblePosition.X < 0 {
+				possiblePosition.X = 0.0
+				p.Speed.X = 0
+			}
+
+			if possiblePosition.Y >= types.FieldMaxY-1 {
+				possiblePosition.Y = types.FieldMaxY - 1
+				p.Speed.Y = 0
+			}
+			if possiblePosition.Y < 0 {
+				possiblePosition.Y = 0.0
+				p.Speed.Y = 0
+			}
+			lastPossible.X = possiblePosition.X
+			lastPossible.Y = possiblePosition.Y
 			break movementLoop
 		}
 
@@ -130,14 +151,15 @@ movementLoop:
 		}
 		lastPossible = possiblePosition
 	}
-	fmt.Printf("selected position: %+v\n", lastPossible)
+	fmt.Printf("selected position: %s\n\n\n", lastPossible.ToString())
 	p.Position = lastPossible
+
 }
 
 func (ge *GameEngine) calculateState() {
 	for pid, player := range ge.state.Players {
 		ge.MovePlayer(pid)
-		fmt.Printf("%+v\n", player)
+		fmt.Printf("%s\n", player.ToString())
 
 		// "slowing"
 		newSpeed := types.Vector{}
@@ -156,7 +178,7 @@ func (ge *GameEngine) calculateState() {
 
 		// "gravity"
 		if player.Position.Y != types.FieldMaxY-1 {
-			newSpeed.Y += 1
+			newSpeed.Y += 2
 		}
 		player.Speed = newSpeed
 	}
