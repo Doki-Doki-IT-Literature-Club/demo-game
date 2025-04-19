@@ -104,6 +104,10 @@ func (ge *GameEngine) MovePlayer(playerID types.PlayerID) {
 
 	singleVector := p.Speed.SingleVector()
 	maxIterations := int32(math.Round(p.Speed.GetLen()))
+	if maxIterations < 1 {
+		singleVector = p.Speed
+		maxIterations = 1
+	}
 
 	lastPossible := types.Vector{X: p.Position.X, Y: p.Position.Y}
 	fmt.Printf("single vector: %+v\n", singleVector.ToString())
