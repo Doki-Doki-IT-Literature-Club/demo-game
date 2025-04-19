@@ -13,8 +13,10 @@ import (
 )
 
 const (
-	gameTick    = 500 * time.Millisecond
+	gameTick    = 100 * time.Millisecond
 	defaultPort = 8000
+	XSLOW       = 0.2
+	YSLOW       = 0.2
 )
 
 type ClinetConn struct {
@@ -164,16 +166,20 @@ func (ge *GameEngine) calculateState() {
 		// "slowing"
 		newSpeed := types.Vector{}
 		if player.Speed.X > 0 {
-			newSpeed.X = player.Speed.X - min(player.Speed.X, 1)
+			slowX := math.Pow(player.Speed.X, 2) * XSLOW
+			newSpeed.X = player.Speed.X - slowX
 		}
 		if player.Speed.X < 0 {
-			newSpeed.X = player.Speed.X - max(player.Speed.X, -1)
+			slowX := math.Pow(player.Speed.X, 2) * XSLOW
+			newSpeed.X = player.Speed.X - -slowX
 		}
 		if player.Speed.Y > 0 {
-			newSpeed.Y = player.Speed.Y - min(player.Speed.Y, 1)
+			slowY := math.Pow(player.Speed.X, 2) * YSLOW
+			newSpeed.Y = player.Speed.Y - slowY
 		}
 		if player.Speed.Y < 0 {
-			newSpeed.Y = player.Speed.Y - max(player.Speed.Y, -1)
+			slowY := math.Pow(player.Speed.X, 2) * YSLOW
+			newSpeed.Y = player.Speed.Y - -slowY
 		}
 
 		// "gravity"
@@ -191,11 +197,11 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	}
 	switch cmd.command {
 	case types.UP:
-		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -3})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -5})
 		// TODO: update player direction, don't set Rune
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.DOWN:
-		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 3})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 5})
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.LEFT:
 		player.Speed = player.Speed.Add(types.Vector{X: -3, Y: 0})
