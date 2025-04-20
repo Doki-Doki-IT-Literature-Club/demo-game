@@ -15,8 +15,9 @@ import (
 const (
 	gameTick    = 100 * time.Millisecond
 	defaultPort = 8000
-	XSLOW       = 0.2
-	YSLOW       = 0.2
+	XSLOW       = 0.1
+	YSLOW       = 0.1
+	MAX_X_SPEED = 7
 )
 
 type ClinetConn struct {
@@ -208,9 +209,15 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 5})
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.LEFT:
+		if player.Speed.X < -MAX_X_SPEED {
+			break
+		}
 		player.Speed = player.Speed.Add(types.Vector{X: -3, Y: 0})
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.RIGHT:
+		if player.Speed.X > MAX_X_SPEED {
+			break
+		}
 		player.Speed = player.Speed.Add(types.Vector{X: 3, Y: 0})
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	}
