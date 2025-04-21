@@ -120,34 +120,6 @@ movementLoop:
 		possiblePosition := p.Position.Add(possibleMovement)
 		fmt.Printf("Possible position: %s\n", possiblePosition.ToString())
 
-		if possiblePosition.X >= types.FieldMaxX ||
-			possiblePosition.Y >= types.FieldMaxY ||
-			possiblePosition.X < 0 ||
-			possiblePosition.Y < 0 {
-
-			fmt.Printf("Break because of out of borders: %s\n", possiblePosition.ToString())
-			if possiblePosition.X >= types.FieldMaxX-1 {
-				possiblePosition.X = types.FieldMaxX - 1
-				p.Speed.X = 0
-			}
-			if possiblePosition.X < 0 {
-				possiblePosition.X = 0.0
-				p.Speed.X = 0
-			}
-
-			if possiblePosition.Y >= types.FieldMaxY-1 {
-				possiblePosition.Y = types.FieldMaxY - 1
-				p.Speed.Y = 0
-			}
-			if possiblePosition.Y < 0 {
-				possiblePosition.Y = 0.0
-				p.Speed.Y = 0
-			}
-			lastPossible.X = possiblePosition.X
-			lastPossible.Y = possiblePosition.Y
-			break movementLoop
-		}
-
 		for pid, player := range ge.state.Players {
 			if pid == p.ID {
 				continue
@@ -168,7 +140,7 @@ movementLoop:
 				if lastPossible.Y >= mo.BottmLeft.Y && lastPossible.Y <= mo.TopRight.Y {
 					p.Speed.X = 0
 				}
-				fmt.Println("COLLISION")
+				fmt.Println("Collision detected")
 				break movementLoop
 			}
 		}
@@ -176,7 +148,6 @@ movementLoop:
 	}
 	fmt.Printf("selected position: %s\n\n\n", lastPossible.ToString())
 	p.Position = lastPossible
-
 }
 
 func (ge *GameEngine) calculateState() {

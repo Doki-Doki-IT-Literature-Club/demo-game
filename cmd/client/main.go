@@ -101,6 +101,9 @@ func (g *LocalGame) Render() string {
 	}
 
 	for _, mo := range g.mapObjects {
+		if !mo.IsVisible {
+			continue
+		}
 		for y := mo.BottmLeft.Y; y < mo.TopRight.Y; y++ {
 			for x := mo.BottmLeft.X; x < mo.TopRight.X; x++ {
 				// TODO: textures?
