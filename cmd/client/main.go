@@ -11,7 +11,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-const defaultServerAddress = "localhost:8000"
+const (
+	defaultServerAddress = "localhost:8000"
+	mapObjRenderChar     = '#'
+)
 
 type model struct {
 	game LocalGame
@@ -29,6 +32,7 @@ func initialModel(conn Connection) model {
 			field_y:        types.FieldMaxY,
 			emptyFiledRune: '.',
 			connection:     conn,
+			mapObjects:     types.MapObjects,
 		},
 	}
 }
@@ -79,6 +83,7 @@ type LocalGame struct {
 	emptyFiledRune rune
 	currentState   types.GameState
 	connection     Connection
+	mapObjects     []types.MapObject
 }
 
 func (g *LocalGame) Render() string {
@@ -93,6 +98,15 @@ func (g *LocalGame) Render() string {
 
 	for _, p := range g.currentState.Players {
 		field[int32(p.Position.Y)][int32(p.Position.X)] = p.PlayerRune
+	}
+
+	for _, mo := range g.mapObjects {
+		for y := mo.BottmLeft.Y; y < mo.TopRight.Y; y++ {
+			for x := mo.BottmLeft.X; x < mo.TopRight.X; x++ {
+				// TODO: textures?
+				field[int32(y)][int32(x)] = mapObjRenderChar
+			}
+		}
 	}
 
 	res := ""

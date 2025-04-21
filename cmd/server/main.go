@@ -156,6 +156,22 @@ movementLoop:
 				break movementLoop
 			}
 		}
+		for _, mo := range ge.state.MapObjects {
+			if mo.IsRigid &&
+				possiblePosition.X >= mo.BottmLeft.X &&
+				possiblePosition.X <= mo.TopRight.X &&
+				possiblePosition.Y >= mo.BottmLeft.Y &&
+				possiblePosition.Y <= mo.TopRight.Y {
+				if lastPossible.X >= mo.BottmLeft.X && lastPossible.X <= mo.TopRight.X {
+					p.Speed.Y = 0
+				}
+				if lastPossible.Y >= mo.BottmLeft.Y && lastPossible.Y <= mo.TopRight.Y {
+					p.Speed.X = 0
+				}
+				fmt.Println("COLLISION")
+				break movementLoop
+			}
+		}
 		lastPossible = possiblePosition
 	}
 	fmt.Printf("selected position: %s\n\n\n", lastPossible.ToString())
@@ -241,7 +257,7 @@ func (ge *GameEngine) Run() {
 
 func RunGameEngine() *GameEngine {
 	ge := &GameEngine{
-		state:       types.GameState{Players: map[types.PlayerID]*types.Player{}},
+		state:       types.GameState{Players: map[types.PlayerID]*types.Player{}, MapObjects: types.MapObjects},
 		conns:       map[types.PlayerID]*ClinetConn{},
 		engineInput: make(chan engineCommand),
 	}

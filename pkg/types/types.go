@@ -68,7 +68,8 @@ func (p *Player) ToString() string {
 }
 
 type GameState struct {
-	Players map[PlayerID]*Player
+	Players    map[PlayerID]*Player
+	MapObjects []MapObject
 }
 
 func (gs *GameState) ToBytes() []byte {
@@ -85,7 +86,7 @@ func (gs *GameState) ToBytes() []byte {
 }
 
 func GameStateFromBytes(data []byte) GameState {
-	gs := GameState{map[PlayerID]*Player{}}
+	gs := GameState{map[PlayerID]*Player{}, MapObjects}
 	for i := 0; i < len(data)/16; i++ {
 		k := i * 16
 
@@ -100,4 +101,17 @@ func GameStateFromBytes(data []byte) GameState {
 		gs.Players[playerID] = &p
 	}
 	return gs
+}
+
+// TODO: Map objects should be dynamic and passed from server to client on init
+
+type MapObject struct {
+	BottmLeft Vector
+	TopRight  Vector
+	IsRigid   bool
+}
+
+var MapObjects = []MapObject{
+	{BottmLeft: Vector{X: 10, Y: 0}, TopRight: Vector{X: 15, Y: 10}, IsRigid: true},
+	{BottmLeft: Vector{X: 17, Y: 15}, TopRight: Vector{X: 30, Y: 18}, IsRigid: true},
 }
