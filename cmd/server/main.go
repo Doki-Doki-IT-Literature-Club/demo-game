@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	gameTick    = 100 * time.Millisecond
+	gameTick    = 500 * time.Millisecond
 	defaultPort = 8000
 	XSLOW       = 0.1
 	YSLOW       = 0.1
