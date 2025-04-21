@@ -36,6 +36,10 @@ func (v *Vector) Add(other Vector) Vector {
 	return Vector{v.X + other.X, v.Y + other.Y}
 }
 
+func (v *Vector) Sub(other Vector) Vector {
+	return Vector{v.X - other.X, v.Y - other.Y}
+}
+
 func (v *Vector) SingleVector() Vector {
 	vectorLen := v.GetLen()
 	if math.IsNaN(vectorLen) {
@@ -53,7 +57,7 @@ func (v *Vector) Multiply(a float64) Vector {
 }
 
 func (v *Vector) ToString() string {
-	return fmt.Sprintf("{X: %.2f | Y: %.2f}", v.X, v.Y)
+	return fmt.Sprintf("{X: %.2f | Y: %.6f}", v.X, v.Y)
 }
 
 type Player struct {
@@ -61,10 +65,15 @@ type Player struct {
 	PlayerRune rune
 	Position   Vector
 	Speed      Vector
+	IsAirborn  bool
 }
 
 func (p *Player) ToString() string {
-	return fmt.Sprintf("Player: %c, Position: %s, Speed: %s", p.PlayerRune, p.Position.ToString(), p.Speed.ToString())
+	airbornStr := "[S]"
+	if p.IsAirborn {
+		airbornStr = "[A]"
+	}
+	return fmt.Sprintf("Player: %c%s, Position: %s, Speed: %s", p.PlayerRune, airbornStr, p.Position.ToString(), p.Speed.ToString())
 }
 
 type GameState struct {

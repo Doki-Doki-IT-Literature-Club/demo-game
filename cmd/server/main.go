@@ -102,6 +102,9 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 
 func (ge *GameEngine) MovePlayer(playerID types.PlayerID) {
 	p := ge.state.Players[playerID]
+	if p.Speed.X == 0 && p.Speed.Y == 0 {
+		return
+	}
 
 	singleVector := p.Speed.SingleVector()
 	maxIterations := int32(math.Round(p.Speed.GetLen()))
@@ -114,10 +117,10 @@ func (ge *GameEngine) MovePlayer(playerID types.PlayerID) {
 	fmt.Printf("single vector: %+v\n", singleVector.ToString())
 	fmt.Printf("current position: %+v\n", lastPossible.ToString())
 
+	p.IsAirborn = true
 movementLoop:
-	for i := range maxIterations {
-		possibleMovement := singleVector.Multiply(float64(i + 1))
-		possiblePosition := p.Position.Add(possibleMovement)
+	for range maxIterations {
+		possiblePosition := lastPossible.Add(singleVector)
 		fmt.Printf("Possible position: %s\n", possiblePosition.ToString())
 
 		for pid, player := range ge.state.Players {
@@ -136,12 +139,17 @@ movementLoop:
 				possiblePosition.Y <= mo.TopRight.Y {
 				if lastPossible.X >= mo.BottmLeft.X && lastPossible.X <= mo.TopRight.X {
 					p.Speed.Y = 0
+					singleVector.Y = 0
 				}
 				if lastPossible.Y >= mo.BottmLeft.Y && lastPossible.Y <= mo.TopRight.Y {
 					p.Speed.X = 0
+					singleVector.X = 0
 				}
+				if lastPossible.Y >= mo.TopRight.Y {
+					p.IsAirborn = false
+				}
+				possiblePosition = lastPossible.Add(singleVector)
 				fmt.Println("Collision detected")
-				break movementLoop
 			}
 		}
 		lastPossible = possiblePosition
@@ -152,8 +160,11 @@ movementLoop:
 
 func (ge *GameEngine) calculateState() {
 	for pid, player := range ge.state.Players {
-		ge.MovePlayer(pid)
+
+		player.Speed.Y -= 2
 		fmt.Printf("%s\n", player.ToString())
+		// "gravity"
+		ge.MovePlayer(pid)
 
 		// "slowing"
 		newSpeed := types.Vector{}
@@ -174,10 +185,6 @@ func (ge *GameEngine) calculateState() {
 			newSpeed.Y = player.Speed.Y - -slowY
 		}
 
-		// "gravity"
-		if player.Position.Y != 0 {
-			newSpeed.Y -= 2
-		}
 		player.Speed = newSpeed
 	}
 }
