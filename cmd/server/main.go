@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	gameTick    = 500 * time.Millisecond
+	gameTick    = 100 * time.Millisecond
 	defaultPort = 8000
 	XSLOW       = 0.1
 	YSLOW       = 0.1
@@ -118,39 +118,37 @@ func (ge *GameEngine) MovePlayer(playerID types.PlayerID) {
 	fmt.Printf("current position: %+v\n", lastPossible.ToString())
 
 	p.IsAirborn = true
-movementLoop:
+	// movementLoop:
 	for range maxIterations {
 		possiblePosition := lastPossible.Add(singleVector)
-		fmt.Printf("Possible position: %s\n", possiblePosition.ToString())
+		fmt.Printf("possible position: %s\n", possiblePosition.ToString())
 
-		for pid, player := range ge.state.Players {
-			if pid == p.ID {
-				continue
-			}
-			if possiblePosition == player.Position {
-				break movementLoop
-			}
-		}
-		for _, mo := range ge.state.MapObjects {
-			if mo.IsRigid &&
-				possiblePosition.X >= mo.BottmLeft.X &&
-				possiblePosition.X <= mo.TopRight.X &&
-				possiblePosition.Y >= mo.BottmLeft.Y &&
-				possiblePosition.Y <= mo.TopRight.Y {
-				if lastPossible.X >= mo.BottmLeft.X && lastPossible.X <= mo.TopRight.X {
-					p.Speed.Y = 0
-					singleVector.Y = 0
+		collides := true
+
+		for collides {
+			collides = false
+			for _, mo := range ge.state.MapObjects {
+				if mo.CollidesWith(possiblePosition) {
+					collides = true
+					// Already was within X bounds, meaning collision happend during Y movement
+					if mo.IsWithinX(lastPossible) {
+						fmt.Printf("* Y Collision detected with %s, %s\n", mo.BottmLeft.ToString(), mo.TopRight.ToString())
+						p.Speed.Y = 0
+						singleVector.Y = 0
+					}
+					// Already was within Y bounds, meaning collision happend during X movement
+					if mo.IsWithinY(lastPossible) {
+						fmt.Printf("* X Collision detected with %s, %s\n", mo.BottmLeft.ToString(), mo.TopRight.ToString())
+						p.Speed.X = 0
+						singleVector.X = 0
+					}
+					if lastPossible.Y >= mo.TopRight.Y {
+						p.IsAirborn = false
+					}
 				}
-				if lastPossible.Y >= mo.BottmLeft.Y && lastPossible.Y <= mo.TopRight.Y {
-					p.Speed.X = 0
-					singleVector.X = 0
-				}
-				if lastPossible.Y >= mo.TopRight.Y {
-					p.IsAirborn = false
-				}
-				possiblePosition = lastPossible.Add(singleVector)
-				fmt.Println("Collision detected")
 			}
+			possiblePosition = lastPossible.Add(singleVector)
+			fmt.Printf("adjusted possible position: %s\n", possiblePosition.ToString())
 		}
 		lastPossible = possiblePosition
 	}
@@ -160,10 +158,11 @@ movementLoop:
 
 func (ge *GameEngine) calculateState() {
 	for pid, player := range ge.state.Players {
-
-		player.Speed.Y -= 2
-		fmt.Printf("%s\n", player.ToString())
 		// "gravity"
+		player.Speed.Y -= 2
+
+		fmt.Printf("%s\n", player.ToString())
+
 		ge.MovePlayer(pid)
 
 		// "slowing"

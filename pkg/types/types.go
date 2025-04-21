@@ -57,7 +57,7 @@ func (v *Vector) Multiply(a float64) Vector {
 }
 
 func (v *Vector) ToString() string {
-	return fmt.Sprintf("{X: %.2f | Y: %.6f}", v.X, v.Y)
+	return fmt.Sprintf("{X: %.2f | Y: %.2f}", v.X, v.Y)
 }
 
 type Player struct {
@@ -119,6 +119,22 @@ type MapObject struct {
 	TopRight  Vector
 	IsRigid   bool
 	IsVisible bool
+}
+
+func (mo *MapObject) IsWithinX(v Vector) bool {
+	return v.X >= mo.BottmLeft.X && v.X < mo.TopRight.X
+}
+
+func (mo *MapObject) IsWithinY(v Vector) bool {
+	return v.Y >= mo.BottmLeft.Y && v.Y < mo.TopRight.Y
+}
+
+func (mo *MapObject) CollidesWith(v Vector) bool {
+	return mo.IsRigid &&
+		v.X >= mo.BottmLeft.X &&
+		v.X < mo.TopRight.X &&
+		v.Y >= mo.BottmLeft.Y &&
+		v.Y < mo.TopRight.Y
 }
 
 var MapObjects = []MapObject{
