@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
-	types "github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
-	tea "github.com/charmbracelet/bubbletea"
 	"io"
 	"net"
 	"os"
+	"slices"
+
+	types "github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 const defaultServerAddress = "localhost:8000"
@@ -94,6 +96,7 @@ func (g *LocalGame) Render() string {
 	}
 
 	res := ""
+	slices.Reverse(field)
 	for _, row := range field {
 		res += string(row) + "\n"
 	}

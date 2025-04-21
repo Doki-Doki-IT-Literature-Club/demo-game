@@ -188,8 +188,8 @@ func (ge *GameEngine) calculateState() {
 		}
 
 		// "gravity"
-		if player.Position.Y != types.FieldMaxY-1 {
-			newSpeed.Y += 2
+		if player.Position.Y != 0 {
+			newSpeed.Y -= 2
 		}
 		player.Speed = newSpeed
 	}
@@ -202,11 +202,11 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	}
 	switch cmd.command {
 	case types.UP:
-		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -5})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 5})
 		// TODO: update player direction, don't set Rune
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.DOWN:
-		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 5})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -5})
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.LEFT:
 		if player.Speed.X < -MAX_X_SPEED {
