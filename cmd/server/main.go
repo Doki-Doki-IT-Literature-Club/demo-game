@@ -13,11 +13,12 @@ import (
 )
 
 const (
-	gameTick    = 100 * time.Millisecond
-	defaultPort = 8000
-	XSLOW       = 0.1
-	YSLOW       = 0.1
-	MAX_X_SPEED = 7
+	gameTick          = 100 * time.Millisecond
+	defaultPort       = 8000
+	XSLOW             = 0.1
+	YSLOW             = 0.1
+	MAX_X_SPEED       = 7
+	FRICTION_BOUNDARY = 0.7
 )
 
 type ClinetConn struct {
@@ -54,6 +55,10 @@ func (ge *GameEngine) addPlayer(conn *ClinetConn) types.PlayerID {
 		},
 	}
 	return newID
+}
+
+func (ge *GameEngine) AddProjectile(projectile *types.Projectile) {
+	ge.state.Projectiles = append(ge.state.Projectiles, projectile)
 }
 
 func (ge *GameEngine) disconnectPlayer(playerID types.PlayerID) {
@@ -125,22 +130,29 @@ func (ge *GameEngine) MovePlayer(playerID types.PlayerID) {
 
 		collides := true
 
+		i := 0
 		for collides {
 			collides = false
 			for _, mo := range ge.state.MapObjects {
 				if mo.CollidesWith(possiblePosition) {
 					collides = true
-					// Already was within X bounds, meaning collision happend during Y movement
 					if mo.IsWithinX(lastPossible) {
+						// Already was within X bounds, meaning collision happend during Y movement
 						fmt.Printf("* Y Collision detected with %s, %s\n", mo.BottmLeft.ToString(), mo.TopRight.ToString())
 						p.Speed.Y = 0
 						singleVector.Y = 0
-					}
-					// Already was within Y bounds, meaning collision happend during X movement
-					if mo.IsWithinY(lastPossible) {
+					} else if mo.IsWithinY(lastPossible) {
+						// Already was within Y bounds, meaning collision happend during X movement
 						fmt.Printf("* X Collision detected with %s, %s\n", mo.BottmLeft.ToString(), mo.TopRight.ToString())
 						p.Speed.X = 0
 						singleVector.X = 0
+					} else {
+						// Diagonal collision
+						p.Speed.X = 0
+						p.Speed.Y = 0
+						singleVector.X = 0
+						singleVector.Y = 0
+						fmt.Printf("Diagonal collision with %s, %s", mo.BottmLeft.ToString(), mo.TopRight.ToString())
 					}
 					if lastPossible.Y >= mo.TopRight.Y {
 						p.IsAirborn = false
@@ -148,12 +160,20 @@ func (ge *GameEngine) MovePlayer(playerID types.PlayerID) {
 				}
 			}
 			possiblePosition = lastPossible.Add(singleVector)
+			i += 1
+			if i > 100 {
+				panic("panic")
+			}
 			fmt.Printf("adjusted possible position: %s\n", possiblePosition.ToString())
 		}
 		lastPossible = possiblePosition
 	}
 	fmt.Printf("selected position: %s\n\n\n", lastPossible.ToString())
 	p.Position = lastPossible
+}
+
+func (ge *GameEngine) MoveProjectile(proj *types.Projectile) {
+	proj.Position.X += proj.Speed.X
 }
 
 func (ge *GameEngine) calculateState() {
@@ -170,10 +190,16 @@ func (ge *GameEngine) calculateState() {
 		if player.Speed.X > 0 {
 			slowX := math.Pow(player.Speed.X, 2) * XSLOW
 			newSpeed.X = player.Speed.X - slowX
+			if player.Speed.X < FRICTION_BOUNDARY && !player.IsAirborn {
+				newSpeed.X = 0
+			}
 		}
 		if player.Speed.X < 0 {
 			slowX := math.Pow(player.Speed.X, 2) * XSLOW
 			newSpeed.X = player.Speed.X - -slowX
+			if player.Speed.X > -FRICTION_BOUNDARY && !player.IsAirborn {
+				newSpeed.X = 0
+			}
 		}
 		if player.Speed.Y > 0 {
 			slowY := math.Pow(player.Speed.X, 2) * YSLOW
@@ -185,6 +211,14 @@ func (ge *GameEngine) calculateState() {
 		}
 
 		player.Speed = newSpeed
+	}
+
+	for _, proj := range ge.state.Projectiles {
+		fmt.Printf("Projectile %s\n", proj.Position.ToString())
+		ge.MoveProjectile(proj)
+		if proj.Position.X >= 45 {
+			proj.Speed.X = 0
+		}
 	}
 }
 
@@ -213,6 +247,14 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 		}
 		player.Speed = player.Speed.Add(types.Vector{X: 3, Y: 0})
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
+	case types.SHOOT:
+		ge.AddProjectile(
+			&types.Projectile{
+				Position: player.Position.Add(types.Vector{X: 1, Y: 0}),
+				Speed:    types.Vector{X: 1, Y: 0},
+				Rune:     '•',
+			},
+		)
 	}
 }
 

@@ -51,16 +51,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "up", "k":
-			m.game.MoveMe(types.UP)
+			m.game.SendCommand(types.UP)
 			return m, nil
 		case "down", "j":
-			m.game.MoveMe(types.DOWN)
+			m.game.SendCommand(types.DOWN)
 			return m, nil
 		case "left", "h":
-			m.game.MoveMe(types.LEFT)
+			m.game.SendCommand(types.LEFT)
 			return m, nil
 		case "right", "l":
-			m.game.MoveMe(types.RIGHT)
+			m.game.SendCommand(types.RIGHT)
+			return m, nil
+		case "e":
+			m.game.SendCommand(types.SHOOT)
 			return m, nil
 		}
 	}
@@ -100,6 +103,10 @@ func (g *LocalGame) Render() string {
 		field[int32(p.Position.Y)][int32(p.Position.X)] = p.PlayerRune
 	}
 
+	for _, p := range g.currentState.Projectiles {
+		field[int32(p.Position.Y)][int32(p.Position.X)] = p.Rune
+	}
+
 	for _, mo := range g.mapObjects {
 		if !mo.IsVisible {
 			continue
@@ -112,7 +119,7 @@ func (g *LocalGame) Render() string {
 		}
 	}
 
-	res := ""
+	res := fmt.Sprintf("Players: %d, projectiles: %d\n", len(g.currentState.Players), len(g.currentState.Projectiles))
 	slices.Reverse(field)
 	for _, row := range field {
 		res += string(row) + "\n"
@@ -120,7 +127,7 @@ func (g *LocalGame) Render() string {
 	return res
 }
 
-func (g *LocalGame) MoveMe(direction types.Command) {
+func (g *LocalGame) SendCommand(direction types.Command) {
 	g.connection.commandsChan <- direction
 }
 
@@ -136,7 +143,7 @@ func connectToServer(serverAddress string) Connection {
 	gameStateChannel := make(chan types.GameState)
 	go func() {
 		for {
-			buff := make([]byte, 1, 1)
+			buff := make([]byte, 2, 2)
 			_, err := io.ReadFull(conn, buff)
 			if err == io.EOF {
 				continue
@@ -144,13 +151,15 @@ func connectToServer(serverAddress string) Connection {
 			if err != nil {
 				panic(err)
 			}
-			gameStateSize := buff[0] * 16
+			playerNumber := int(buff[0])
+			projectileNumber := int(buff[1])
+			gameStateSize := playerNumber*16 + projectileNumber*12
 			buff = make([]byte, gameStateSize, gameStateSize)
 			_, err = io.ReadFull(conn, buff)
 			if err != nil {
 				panic(err)
 			}
-			gs := types.GameStateFromBytes(buff)
+			gs := types.GameStateFromBytes(buff, playerNumber, projectileNumber)
 			gameStateChannel <- gs
 		}
 	}()

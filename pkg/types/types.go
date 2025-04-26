@@ -15,6 +15,7 @@ const (
 	DOWN  = 0x02
 	LEFT  = 0x03
 	RIGHT = 0x04
+	SHOOT = 0x05
 )
 
 var DirectionCharMap = map[Command]rune{
@@ -76,13 +77,24 @@ func (p *Player) ToString() string {
 	return fmt.Sprintf("Player: %c%s, Position: %s, Speed: %s", p.PlayerRune, airbornStr, p.Position.ToString(), p.Speed.ToString())
 }
 
+type Projectile struct {
+	Rune     rune
+	Position Vector
+	Speed    Vector
+}
+
+func (p *Projectile) ToString() string {
+	return fmt.Sprintf("Projectile %c, Position: %s, Speed: %s", p.Rune, p.Position, p.Speed)
+}
+
 type GameState struct {
-	Players    map[PlayerID]*Player
-	MapObjects []MapObject
+	Players     map[PlayerID]*Player
+	Projectiles []*Projectile
+	MapObjects  []MapObject
 }
 
 func (gs *GameState) ToBytes() []byte {
-	res := []byte{byte(len(gs.Players))}
+	res := []byte{byte(len(gs.Players)), byte(len(gs.Projectiles))}
 	for _, p := range gs.Players {
 		pb := [16]byte{}
 		binary.BigEndian.PutUint32(pb[:4], uint32(p.ID))
@@ -91,12 +103,19 @@ func (gs *GameState) ToBytes() []byte {
 		binary.BigEndian.PutUint32(pb[12:], uint32(p.Position.Y))
 		res = append(res, pb[:]...)
 	}
+	for _, p := range gs.Projectiles {
+		pb := [12]byte{}
+		binary.BigEndian.PutUint32(pb[:4], uint32(p.Rune))
+		binary.BigEndian.PutUint32(pb[4:8], uint32(p.Position.X))
+		binary.BigEndian.PutUint32(pb[8:], uint32(p.Position.Y))
+		res = append(res, pb[:]...)
+	}
 	return res
 }
 
-func GameStateFromBytes(data []byte) GameState {
-	gs := GameState{map[PlayerID]*Player{}, MapObjects}
-	for i := 0; i < len(data)/16; i++ {
+func GameStateFromBytes(data []byte, playerNumber int, projectileNumber int) GameState {
+	gs := GameState{map[PlayerID]*Player{}, []*Projectile{}, MapObjects}
+	for i := range playerNumber {
 		k := i * 16
 
 		playerID := PlayerID(binary.BigEndian.Uint32(data[k : k+4]))
@@ -108,6 +127,17 @@ func GameStateFromBytes(data []byte) GameState {
 			Position:   Vector{float64(X), float64(Y)},
 		}
 		gs.Players[playerID] = &p
+	}
+
+	for i := range projectileNumber {
+		k := 16*playerNumber + i*12
+		X := binary.BigEndian.Uint32(data[k+4 : k+8])
+		Y := binary.BigEndian.Uint32(data[k+8 : k+12])
+		p := Projectile{
+			Rune:     rune(binary.BigEndian.Uint32(data[k : k+4])),
+			Position: Vector{float64(X), float64(Y)},
+		}
+		gs.Projectiles = append(gs.Projectiles, &p)
 	}
 	return gs
 }

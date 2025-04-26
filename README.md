@@ -1,11 +1,12 @@
 # demo-game
+
 Simple online game with terminal rendering
 
 # TODO:
 
 ```
 - [ ] collision of players
-- [ ] walls
+- [X] walls
 - [ ] directions
 - [ ] map
 - [ ] projectiles
