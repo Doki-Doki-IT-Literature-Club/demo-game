@@ -30,7 +30,7 @@ func initialModel(conn Connection) model {
 		LocalGame{
 			field_x:        types.FieldMaxX,
 			field_y:        types.FieldMaxY,
-			emptyFiledRune: '.',
+			emptyFiledRune: ' ',
 			connection:     conn,
 			mapObjects:     types.MapObjects,
 		},

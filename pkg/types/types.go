@@ -33,15 +33,15 @@ type Vector struct {
 	Y float64
 }
 
-func (v *Vector) Add(other Vector) Vector {
+func (v Vector) Add(other Vector) Vector {
 	return Vector{v.X + other.X, v.Y + other.Y}
 }
 
-func (v *Vector) Sub(other Vector) Vector {
+func (v Vector) Sub(other Vector) Vector {
 	return Vector{v.X - other.X, v.Y - other.Y}
 }
 
-func (v *Vector) SingleVector() Vector {
+func (v Vector) SingleVector() Vector {
 	vectorLen := v.GetLen()
 	if math.IsNaN(vectorLen) {
 		return Vector{}
@@ -49,16 +49,24 @@ func (v *Vector) SingleVector() Vector {
 	return Vector{v.X / vectorLen, v.Y / vectorLen}
 }
 
-func (v *Vector) GetLen() float64 {
+func (v Vector) GetLen() float64 {
 	return math.Sqrt(math.Pow(v.X, 2) + math.Pow(v.Y, 2))
 }
 
-func (v *Vector) Multiply(a float64) Vector {
+func (v Vector) Multiply(a float64) Vector {
 	return Vector{v.X * a, v.Y * a}
 }
 
-func (v *Vector) ToString() string {
+func (v Vector) ToString() string {
 	return fmt.Sprintf("{X: %.2f | Y: %.2f}", v.X, v.Y)
+}
+
+type MovableObject interface {
+	GetSpeed() Vector
+	SetSpeed(Vector)
+
+	GetPosition() Vector
+	SetPosition(Vector)
 }
 
 type Player struct {
@@ -77,10 +85,42 @@ func (p *Player) ToString() string {
 	return fmt.Sprintf("Player: %c%s, Position: %s, Speed: %s", p.PlayerRune, airbornStr, p.Position.ToString(), p.Speed.ToString())
 }
 
+func (p Player) GetSpeed() Vector {
+	return p.Speed
+}
+
+func (p *Player) SetSpeed(speed Vector) {
+	p.Speed = speed
+}
+
+func (p Player) GetPosition() Vector {
+	return p.Position
+}
+
+func (p *Player) SetPosition(position Vector) {
+	p.Position = position
+}
+
 type Projectile struct {
 	Rune     rune
 	Position Vector
 	Speed    Vector
+}
+
+func (p Projectile) GetSpeed() Vector {
+	return p.Speed
+}
+
+func (p *Projectile) SetSpeed(speed Vector) {
+	p.Speed = speed
+}
+
+func (p Projectile) GetPosition() Vector {
+	return p.Position
+}
+
+func (p *Projectile) SetPosition(position Vector) {
+	p.Position = position
 }
 
 func (p *Projectile) ToString() string {
