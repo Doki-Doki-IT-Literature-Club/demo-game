@@ -105,9 +105,9 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 	}()
 }
 
-func (ge *GameEngine) MoveObject(p types.MovableObject) {
-	speed := p.GetSpeed()
-	position := p.GetPosition()
+func (ge *GameEngine) MoveObject(obj types.MovableObject) {
+	speed := obj.GetSpeed()
+	position := obj.GetPosition()
 
 	if speed.X == 0 && speed.Y == 0 {
 		return
@@ -167,8 +167,8 @@ func (ge *GameEngine) MoveObject(p types.MovableObject) {
 		lastPossible = possiblePosition
 	}
 	fmt.Printf("selected position: %s\n\n\n", lastPossible.ToString())
-	p.SetSpeed(speed)
-	p.SetPosition(lastPossible)
+	obj.SetSpeed(speed)
+	obj.SetPosition(lastPossible)
 }
 
 func (ge *GameEngine) calculateState() {
@@ -180,6 +180,7 @@ func (ge *GameEngine) calculateState() {
 		ge.MoveObject(player)
 
 		// "slowing"
+		// TODO: airborn not working now
 		newSpeed := types.Vector{}
 		if player.Speed.X > 0 {
 			slowX := math.Pow(player.Speed.X, 2) * XSLOW
