@@ -49,8 +49,8 @@ func (ge *GameEngine) addPlayer(conn *ClinetConn) types.ObjectID {
 	ge.newPlayerID++
 	ge.conns[newID] = conn
 	ge.state.Players[newID] = &types.Player{
-		ID:         newID,
-		PlayerRune: 'G',
+		ID:            newID,
+		ViewDirection: types.D_RIGHT,
 		Position: types.Vector{
 			X: float64(len(ge.state.Players)),
 			Y: float64(len(ge.state.Players)),
@@ -73,6 +73,13 @@ func (ge *GameEngine) AddProjectile(position types.Vector, speed types.Vector) {
 	}
 }
 
+func (ge *GameEngine) removeProjectile(projectileID types.ObjectID) {
+	ge.mu.Lock()
+	defer ge.mu.Unlock()
+
+	delete(ge.state.Projectiles, projectileID)
+}
+
 func (ge *GameEngine) disconnectPlayer(playerID types.ObjectID) {
 	ge.mu.Lock()
 	defer ge.mu.Unlock()
@@ -84,11 +91,8 @@ func (ge *GameEngine) disconnectPlayer(playerID types.ObjectID) {
 
 func (ge *GameEngine) HangleConnection(conn net.Conn) {
 	fmt.Printf("New connection: %v\n", conn)
-
 	write := make(chan types.GameState)
-
 	cliConn := &ClinetConn{write}
-
 	playerID := ge.addPlayer(cliConn)
 
 	go func() {
@@ -117,13 +121,9 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 	}()
 }
 
-func (ge *GameEngine) MoveObject(obj types.MovableObject) {
+func (ge *GameEngine) MoveObject(obj types.MovableObject) *types.MapObject {
 	speed := obj.GetSpeed()
 	position := obj.GetPosition()
-
-	if speed.X == 0 && speed.Y == 0 {
-		return
-	}
 
 	singleVector := speed.SingleVector()
 	maxIterations := int32(math.Round(speed.GetLen()))
@@ -136,7 +136,8 @@ func (ge *GameEngine) MoveObject(obj types.MovableObject) {
 	fmt.Printf("single vector: %+v\n", singleVector.ToString())
 	fmt.Printf("current position: %+v\n", lastPossible.ToString())
 
-	// movementLoop:
+	var collidesWith *types.MapObject = nil
+movementLoop:
 	for range maxIterations {
 		possiblePosition := lastPossible.Add(singleVector)
 		fmt.Printf("possible position: %s\n", possiblePosition.ToString())
@@ -167,12 +168,15 @@ func (ge *GameEngine) MoveObject(obj types.MovableObject) {
 						singleVector.Y = 0
 						fmt.Printf("Diagonal collision with %s, %s", mo.BottomLeft.ToString(), mo.TopRight.ToString())
 					}
+
+					collidesWith = &mo
 				}
 			}
 			possiblePosition = lastPossible.Add(singleVector)
 			i += 1
-			if i > 100 {
-				panic("panic")
+			if i > 3 {
+				fmt.Printf("object %v stuck inside something\n", obj)
+				break movementLoop
 			}
 			fmt.Printf("adjusted possible position: %s\n", possiblePosition.ToString())
 		}
@@ -181,6 +185,7 @@ func (ge *GameEngine) MoveObject(obj types.MovableObject) {
 	fmt.Printf("selected position: %s\n\n\n", lastPossible.ToString())
 	obj.SetSpeed(speed)
 	obj.SetPosition(lastPossible)
+	return collidesWith
 }
 
 func (ge *GameEngine) calculateState() {
@@ -189,6 +194,7 @@ func (ge *GameEngine) calculateState() {
 		player.Speed.Y -= 2
 
 		fmt.Printf("%s\n", player.ToString())
+
 		ge.MoveObject(player)
 
 		// "slowing"
@@ -222,7 +228,11 @@ func (ge *GameEngine) calculateState() {
 
 	for _, proj := range ge.state.Projectiles {
 		fmt.Printf("Projectile %s\n", proj.Position.ToString())
-		ge.MoveObject(proj)
+		collidesWith := ge.MoveObject(proj)
+		if collidesWith != nil {
+			fmt.Printf("Collides with: %v\n", collidesWith)
+			ge.removeProjectile(proj.ID)
+		}
 	}
 }
 
@@ -235,26 +245,26 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	case types.UP:
 		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 5})
 		// TODO: update player direction, don't set Rune
-		player.PlayerRune = types.DirectionCharMap[cmd.command]
+		player.ViewDirection = types.D_UP
 	case types.DOWN:
 		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -5})
-		player.PlayerRune = types.DirectionCharMap[cmd.command]
+		player.ViewDirection = types.D_DOWN
 	case types.LEFT:
 		if player.Speed.X < -MAX_X_SPEED {
 			break
 		}
 		player.Speed = player.Speed.Add(types.Vector{X: -3, Y: 0})
-		player.PlayerRune = types.DirectionCharMap[cmd.command]
+		player.ViewDirection = types.D_LEFT
 	case types.RIGHT:
 		if player.Speed.X > MAX_X_SPEED {
 			break
 		}
 		player.Speed = player.Speed.Add(types.Vector{X: 3, Y: 0})
-		player.PlayerRune = types.DirectionCharMap[cmd.command]
+		player.ViewDirection = types.D_RIGHT
 	case types.SHOOT:
 		ge.AddProjectile(
 			player.Position.Add(types.Vector{X: 1, Y: 0}),
-			types.Vector{X: 1, Y: 0},
+			player.ViewDirection.AsVector().Multiply(2.0),
 		)
 	}
 }

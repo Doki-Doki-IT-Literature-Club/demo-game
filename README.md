@@ -6,6 +6,7 @@ Simple online game with terminal rendering
 
 ```
 - [X] walls
+- [ ] control sum for server package
 - [ ] projectiles
 - [ ] collision of players
 - [ ] directions

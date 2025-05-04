@@ -19,11 +19,41 @@ const (
 	SHOOT = 0x05
 )
 
-var DirectionCharMap = map[Command]rune{
-	UP:    '^',
-	DOWN:  'V',
-	LEFT:  '<',
-	RIGHT: '>',
+type Direction uint32
+
+const (
+	D_UP = iota
+	D_DOWN
+	D_LEFT
+	D_RIGHT
+)
+
+func (d Direction) AsVector() Vector {
+	switch d {
+	case D_UP:
+		return Vector{0, 1}
+	case D_DOWN:
+		return Vector{0, -1}
+	case D_LEFT:
+		return Vector{-1, 0}
+	case D_RIGHT:
+		return Vector{1, 0}
+	}
+	panic("Unsupported direction")
+}
+
+func (d Direction) AsRune() rune {
+	switch d {
+	case D_UP:
+		return '^'
+	case D_DOWN:
+		return 'V'
+	case D_LEFT:
+		return '<'
+	case D_RIGHT:
+		return '>'
+	}
+	panic("Unsupported direction")
 }
 
 const FieldMaxX = 50
@@ -71,11 +101,12 @@ type MovableObject interface {
 }
 
 type Player struct {
-	ID         ObjectID
-	PlayerRune rune
-	Position   Vector
-	Speed      Vector
-	IsAirborn  bool
+	ID       ObjectID
+	Position Vector
+	Speed    Vector
+
+	IsAirborn     bool
+	ViewDirection Direction
 }
 
 func (p *Player) ToString() string {
@@ -83,7 +114,7 @@ func (p *Player) ToString() string {
 	if p.IsAirborn {
 		airbornStr = "[A]"
 	}
-	return fmt.Sprintf("Player: %c%s, Position: %s, Speed: %s", p.PlayerRune, airbornStr, p.Position.ToString(), p.Speed.ToString())
+	return fmt.Sprintf("Player: %c%s, Position: %s, Speed: %s", p.ViewDirection.AsRune(), airbornStr, p.Position.ToString(), p.Speed.ToString())
 }
 
 func (p Player) GetSpeed() Vector {
@@ -105,7 +136,7 @@ func (p *Player) SetPosition(position Vector) {
 func (p Player) ToBytes() []byte {
 	pb := [16]byte{}
 	binary.BigEndian.PutUint32(pb[:4], uint32(p.ID))
-	binary.BigEndian.PutUint32(pb[4:8], uint32(p.PlayerRune))
+	binary.BigEndian.PutUint32(pb[4:8], uint32(p.ViewDirection))
 	binary.BigEndian.PutUint32(pb[8:12], uint32(p.Position.X))
 	binary.BigEndian.PutUint32(pb[12:], uint32(p.Position.Y))
 	return pb[:]
@@ -118,7 +149,7 @@ func (p *Player) FillFromBytes(reader io.Reader) {
 		panic(err)
 	}
 	p.ID = ObjectID(binary.BigEndian.Uint32(data[:4]))
-	p.PlayerRune = rune(binary.BigEndian.Uint32(data[4:8]))
+	p.ViewDirection = Direction(binary.BigEndian.Uint32(data[4:8]))
 	X := binary.BigEndian.Uint32(data[8:12])
 	Y := binary.BigEndian.Uint32(data[12:16])
 	p.Position = Vector{float64(X), float64(Y)}
@@ -148,7 +179,12 @@ func (p *Projectile) SetPosition(position Vector) {
 }
 
 func (p Projectile) ToString() string {
-	return fmt.Sprintf("Projectile %c, Position: %s, Speed: %s", p.Rune, p.Position, p.Speed)
+	return fmt.Sprintf(
+		"Projectile %c, Position: %s, Speed: %s",
+		p.Rune,
+		p.Position.ToString(),
+		p.Speed.ToString(),
+	)
 }
 func (p Projectile) ToBytes() []byte {
 	pb := [16]byte{}

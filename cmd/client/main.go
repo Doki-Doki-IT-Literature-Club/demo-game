@@ -99,11 +99,21 @@ func (g *LocalGame) Render() string {
 	}
 
 	for _, p := range g.currentState.Players {
-		field[int32(p.Position.Y)][int32(p.Position.X)] = p.PlayerRune
+		x := int(p.Position.X)
+		y := int(p.Position.Y)
+		if x < 0 || x > g.field_x || y < 0 || y > g.field_y {
+			continue
+		}
+		field[y][x] = p.ViewDirection.AsRune()
 	}
 
 	for _, p := range g.currentState.Projectiles {
-		field[int32(p.Position.Y)][int32(p.Position.X)] = p.Rune
+		x := int(p.Position.X)
+		y := int(p.Position.Y)
+		if x < 0 || x > g.field_x || y < 0 || y > g.field_y {
+			continue
+		}
+		field[y][x] = p.Rune
 	}
 
 	for _, mo := range g.mapObjects {
@@ -142,22 +152,6 @@ func connectToServer(serverAddress string) Connection {
 	gameStateChannel := make(chan types.GameState)
 	go func() {
 		for {
-			// buff := make([]byte, 2, 2)
-			// _, err := io.ReadFull(conn, buff)
-			// if err == io.EOF {
-			// 	continue
-			// }
-			// if err != nil {
-			// 	panic(err)
-			// }
-			// playerNumber := int(buff[0])
-			// projectileNumber := int(buff[1])
-			// gameStateSize := playerNumber*16 + projectileNumber*12
-			// buff = make([]byte, gameStateSize, gameStateSize)
-			// _, err = io.ReadFull(conn, buff)
-			// if err != nil {
-			// 	panic(err)
-			// }
 			gs := types.GameStateFromBytes(conn)
 			gameStateChannel <- gs
 		}
