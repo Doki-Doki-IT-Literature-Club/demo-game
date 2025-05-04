@@ -6,10 +6,10 @@ Simple online game with terminal rendering
 
 ```
 - [X] walls
-- [ ] control sum for server package
-- [ ] projectiles
-- [ ] collision of players
-- [ ] directions
+- [x] directions
+- [x] projectiles simple
+- [ ] projectile collision with players
+- [ ] control sum for server package (?)
 - [ ] map
 - [ ] camera rendering based on player position
 ```
