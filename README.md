@@ -5,10 +5,10 @@ Simple online game with terminal rendering
 # TODO:
 
 ```
-- [ ] collision of players
 - [X] walls
+- [ ] projectiles
+- [ ] collision of players
 - [ ] directions
 - [ ] map
-- [ ] projectiles
 - [ ] camera rendering based on player position
 ```

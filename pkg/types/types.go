@@ -185,35 +185,35 @@ func GameStateFromBytes(data []byte, playerNumber int, projectileNumber int) Gam
 // TODO: Map objects should be dynamic and passed from server to client on init
 
 type MapObject struct {
-	BottmLeft Vector
-	TopRight  Vector
-	IsRigid   bool
-	IsVisible bool
+	BottomLeft Vector
+	TopRight   Vector
+	IsRigid    bool
+	IsVisible  bool
 }
 
 func (mo *MapObject) IsWithinX(v Vector) bool {
-	return v.X >= mo.BottmLeft.X && v.X < mo.TopRight.X
+	return v.X >= mo.BottomLeft.X && v.X < mo.TopRight.X
 }
 
 func (mo *MapObject) IsWithinY(v Vector) bool {
-	return v.Y >= mo.BottmLeft.Y && v.Y < mo.TopRight.Y
+	return v.Y >= mo.BottomLeft.Y && v.Y < mo.TopRight.Y
 }
 
 func (mo *MapObject) CollidesWith(v Vector) bool {
 	return mo.IsRigid &&
-		v.X >= mo.BottmLeft.X &&
+		v.X >= mo.BottomLeft.X &&
 		v.X < mo.TopRight.X &&
-		v.Y >= mo.BottmLeft.Y &&
+		v.Y >= mo.BottomLeft.Y &&
 		v.Y < mo.TopRight.Y
 }
 
 var MapObjects = []MapObject{
-	{BottmLeft: Vector{X: 10, Y: 0}, TopRight: Vector{X: 15, Y: 10}, IsRigid: true, IsVisible: true},
-	{BottmLeft: Vector{X: 17, Y: 15}, TopRight: Vector{X: 30, Y: 18}, IsRigid: true, IsVisible: true},
+	{BottomLeft: Vector{X: 10, Y: 0}, TopRight: Vector{X: 15, Y: 10}, IsRigid: true, IsVisible: true},
+	{BottomLeft: Vector{X: 17, Y: 15}, TopRight: Vector{X: 30, Y: 18}, IsRigid: true, IsVisible: true},
 
 	// Map borders
-	{BottmLeft: Vector{X: -1, Y: -1}, TopRight: Vector{X: FieldMaxX + 1, Y: 0}, IsRigid: true},                    // Bottom
-	{BottmLeft: Vector{X: -1, Y: FieldMaxY}, TopRight: Vector{X: FieldMaxX + 1, Y: FieldMaxY + 1}, IsRigid: true}, // Top
-	{BottmLeft: Vector{X: -1, Y: -1}, TopRight: Vector{X: 0, Y: FieldMaxY + 1}, IsRigid: true},                    // Left
-	{BottmLeft: Vector{X: FieldMaxX, Y: -1}, TopRight: Vector{X: FieldMaxX + 1, Y: FieldMaxY + 1}, IsRigid: true}, // Left
+	{BottomLeft: Vector{X: -1, Y: -1}, TopRight: Vector{X: FieldMaxX + 1, Y: 0}, IsRigid: true},                    // Bottom
+	{BottomLeft: Vector{X: -1, Y: FieldMaxY}, TopRight: Vector{X: FieldMaxX + 1, Y: FieldMaxY + 1}, IsRigid: true}, // Top
+	{BottomLeft: Vector{X: -1, Y: -1}, TopRight: Vector{X: 0, Y: FieldMaxY + 1}, IsRigid: true},                    // Left
+	{BottomLeft: Vector{X: FieldMaxX, Y: -1}, TopRight: Vector{X: FieldMaxX + 1, Y: FieldMaxY + 1}, IsRigid: true}, // Left
 }

@@ -139,12 +139,12 @@ func (ge *GameEngine) MoveObject(obj types.MovableObject) {
 					collides = true
 					if mo.IsWithinX(lastPossible) {
 						// Already was within X bounds, meaning collision happend during Y movement
-						fmt.Printf("* Y Collision detected with %s, %s\n", mo.BottmLeft.ToString(), mo.TopRight.ToString())
+						fmt.Printf("* Y Collision detected with %s, %s\n", mo.BottomLeft.ToString(), mo.TopRight.ToString())
 						speed.Y = 0
 						singleVector.Y = 0
 					} else if mo.IsWithinY(lastPossible) {
 						// Already was within Y bounds, meaning collision happend during X movement
-						fmt.Printf("* X Collision detected with %s, %s\n", mo.BottmLeft.ToString(), mo.TopRight.ToString())
+						fmt.Printf("* X Collision detected with %s, %s\n", mo.BottomLeft.ToString(), mo.TopRight.ToString())
 						speed.X = 0
 						singleVector.X = 0
 					} else {
@@ -153,7 +153,7 @@ func (ge *GameEngine) MoveObject(obj types.MovableObject) {
 						speed.Y = 0
 						singleVector.X = 0
 						singleVector.Y = 0
-						fmt.Printf("Diagonal collision with %s, %s", mo.BottmLeft.ToString(), mo.TopRight.ToString())
+						fmt.Printf("Diagonal collision with %s, %s", mo.BottomLeft.ToString(), mo.TopRight.ToString())
 					}
 				}
 			}

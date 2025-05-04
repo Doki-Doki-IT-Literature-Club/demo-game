@@ -111,8 +111,8 @@ func (g *LocalGame) Render() string {
 		if !mo.IsVisible {
 			continue
 		}
-		for y := mo.BottmLeft.Y; y < mo.TopRight.Y; y++ {
-			for x := mo.BottmLeft.X; x < mo.TopRight.X; x++ {
+		for y := mo.BottomLeft.Y; y < mo.TopRight.Y; y++ {
+			for x := mo.BottomLeft.X; x < mo.TopRight.X; x++ {
 				// TODO: textures?
 				field[int32(y)][int32(x)] = mapObjRenderChar
 			}
