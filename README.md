@@ -2,6 +2,13 @@
 
 Simple online game with terminal rendering
 
+```
+>>        <<
+--  •   • --
+/\        /\
+
+```
+
 # TODO:
 
 ```
