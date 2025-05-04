@@ -3,10 +3,11 @@ package types
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math"
 )
 
-type PlayerID uint32
+type ObjectID uint32
 
 type Command byte
 
@@ -70,7 +71,7 @@ type MovableObject interface {
 }
 
 type Player struct {
-	ID         PlayerID
+	ID         ObjectID
 	PlayerRune rune
 	Position   Vector
 	Speed      Vector
@@ -101,7 +102,30 @@ func (p *Player) SetPosition(position Vector) {
 	p.Position = position
 }
 
+func (p Player) ToBytes() []byte {
+	pb := [16]byte{}
+	binary.BigEndian.PutUint32(pb[:4], uint32(p.ID))
+	binary.BigEndian.PutUint32(pb[4:8], uint32(p.PlayerRune))
+	binary.BigEndian.PutUint32(pb[8:12], uint32(p.Position.X))
+	binary.BigEndian.PutUint32(pb[12:], uint32(p.Position.Y))
+	return pb[:]
+}
+
+func (p *Player) FillFromBytes(reader io.Reader) {
+	data := make([]byte, 16, 16)
+	_, err := reader.Read(data)
+	if err != nil {
+		panic(err)
+	}
+	p.ID = ObjectID(binary.BigEndian.Uint32(data[:4]))
+	p.PlayerRune = rune(binary.BigEndian.Uint32(data[4:8]))
+	X := binary.BigEndian.Uint32(data[8:12])
+	Y := binary.BigEndian.Uint32(data[12:16])
+	p.Position = Vector{float64(X), float64(Y)}
+}
+
 type Projectile struct {
+	ID       ObjectID
 	Rune     rune
 	Position Vector
 	Speed    Vector
@@ -123,63 +147,102 @@ func (p *Projectile) SetPosition(position Vector) {
 	p.Position = position
 }
 
-func (p *Projectile) ToString() string {
+func (p Projectile) ToString() string {
 	return fmt.Sprintf("Projectile %c, Position: %s, Speed: %s", p.Rune, p.Position, p.Speed)
 }
-
-type GameState struct {
-	Players     map[PlayerID]*Player
-	Projectiles []*Projectile
-	MapObjects  []MapObject
+func (p Projectile) ToBytes() []byte {
+	pb := [16]byte{}
+	binary.BigEndian.PutUint32(pb[:4], uint32(p.ID))
+	binary.BigEndian.PutUint32(pb[4:8], uint32(p.Rune))
+	binary.BigEndian.PutUint32(pb[8:12], uint32(p.Position.X))
+	binary.BigEndian.PutUint32(pb[12:], uint32(p.Position.Y))
+	return pb[:]
 }
 
-func (gs *GameState) ToBytes() []byte {
-	res := []byte{byte(len(gs.Players)), byte(len(gs.Projectiles))}
-	for _, p := range gs.Players {
-		pb := [16]byte{}
-		binary.BigEndian.PutUint32(pb[:4], uint32(p.ID))
-		binary.BigEndian.PutUint32(pb[4:8], uint32(p.PlayerRune))
-		binary.BigEndian.PutUint32(pb[8:12], uint32(p.Position.X))
-		binary.BigEndian.PutUint32(pb[12:], uint32(p.Position.Y))
-		res = append(res, pb[:]...)
+func (p *Projectile) FillFromBytes(reader io.Reader) {
+	data := make([]byte, 16, 16)
+	_, err := reader.Read(data)
+	if err != nil {
+		panic(err)
 	}
-	for _, p := range gs.Projectiles {
-		pb := [12]byte{}
-		binary.BigEndian.PutUint32(pb[:4], uint32(p.Rune))
-		binary.BigEndian.PutUint32(pb[4:8], uint32(p.Position.X))
-		binary.BigEndian.PutUint32(pb[8:], uint32(p.Position.Y))
-		res = append(res, pb[:]...)
+	p.ID = ObjectID(binary.BigEndian.Uint32(data[:4]))
+	p.Rune = rune(binary.BigEndian.Uint32(data[4:8]))
+	X := binary.BigEndian.Uint32(data[8:12])
+	Y := binary.BigEndian.Uint32(data[12:16])
+	p.Position = Vector{float64(X), float64(Y)}
+}
+
+type PlayerMap map[ObjectID]*Player
+
+func (pm PlayerMap) ToBytes() []byte {
+	res := []byte{byte(len(pm))}
+	for _, p := range pm {
+		res = append(res, p.ToBytes()[:]...)
 	}
 	return res
 }
 
-func GameStateFromBytes(data []byte, playerNumber int, projectileNumber int) GameState {
-	gs := GameState{map[PlayerID]*Player{}, []*Projectile{}, MapObjects}
-	for i := range playerNumber {
-		k := i * 16
-
-		playerID := PlayerID(binary.BigEndian.Uint32(data[k : k+4]))
-		X := binary.BigEndian.Uint32(data[k+8 : k+12])
-		Y := binary.BigEndian.Uint32(data[k+12 : k+16])
-		p := Player{
-			ID:         playerID,
-			PlayerRune: rune(binary.BigEndian.Uint32(data[k+4 : k+8])),
-			Position:   Vector{float64(X), float64(Y)},
-		}
-		gs.Players[playerID] = &p
+func (pm PlayerMap) FillFromBytes(reader io.Reader) {
+	playerNumberBuff := make([]byte, 1, 1)
+	_, err := reader.Read(playerNumberBuff)
+	if err != nil {
+		panic(err)
 	}
+	playerNumber := int(playerNumberBuff[0])
+	for range playerNumber {
+		player := Player{}
+		player.FillFromBytes(reader)
 
-	for i := range projectileNumber {
-		k := 16*playerNumber + i*12
-		X := binary.BigEndian.Uint32(data[k+4 : k+8])
-		Y := binary.BigEndian.Uint32(data[k+8 : k+12])
-		p := Projectile{
-			Rune:     rune(binary.BigEndian.Uint32(data[k : k+4])),
-			Position: Vector{float64(X), float64(Y)},
-		}
-		gs.Projectiles = append(gs.Projectiles, &p)
+		pm[player.ID] = &player
 	}
-	return gs
+}
+
+type ProjectileMap map[ObjectID]*Projectile
+
+func (pm ProjectileMap) ToBytes() []byte {
+	res := []byte{byte(len(pm))}
+	for _, p := range pm {
+		res = append(res, p.ToBytes()[:]...)
+	}
+	return res
+}
+
+func (pm ProjectileMap) FillFromBytes(reader io.Reader) {
+	projectileNuberBuff := make([]byte, 1, 1)
+	_, err := reader.Read(projectileNuberBuff)
+	if err != nil {
+		panic(err)
+	}
+	projectileNumber := int(projectileNuberBuff[0])
+	for range projectileNumber {
+		projectile := Projectile{}
+		projectile.FillFromBytes(reader)
+
+		pm[projectile.ID] = &projectile
+	}
+}
+
+type GameState struct {
+	Players     PlayerMap
+	Projectiles ProjectileMap
+	MapObjects  []MapObject
+}
+
+func (gs *GameState) ToBytes() []byte {
+	res := []byte{}
+	res = append(res, gs.Players.ToBytes()...)
+	res = append(res, gs.Projectiles.ToBytes()...)
+	return res
+}
+
+func GameStateFromBytes(reader io.Reader) GameState {
+	playerMap := PlayerMap{}
+	playerMap.FillFromBytes(reader)
+
+	projectileMap := ProjectileMap{}
+	projectileMap.FillFromBytes(reader)
+	gameState := GameState{Players: playerMap, Projectiles: projectileMap}
+	return gameState
 }
 
 // TODO: Map objects should be dynamic and passed from server to client on init

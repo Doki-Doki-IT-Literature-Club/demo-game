@@ -26,20 +26,22 @@ type ClinetConn struct {
 }
 
 type engineCommand struct {
-	playerID types.PlayerID
+	playerID types.ObjectID
 	command  types.Command
 }
 
 type GameEngine struct {
-	newPlayerID types.PlayerID
-	conns       map[types.PlayerID]*ClinetConn
+	newPlayerID     types.ObjectID
+	newProjectileID types.ObjectID
+
+	conns       map[types.ObjectID]*ClinetConn
 	state       types.GameState
 	engineInput chan engineCommand
 
 	mu sync.Mutex
 }
 
-func (ge *GameEngine) addPlayer(conn *ClinetConn) types.PlayerID {
+func (ge *GameEngine) addPlayer(conn *ClinetConn) types.ObjectID {
 	ge.mu.Lock()
 	defer ge.mu.Unlock()
 
@@ -57,11 +59,21 @@ func (ge *GameEngine) addPlayer(conn *ClinetConn) types.PlayerID {
 	return newID
 }
 
-func (ge *GameEngine) AddProjectile(projectile *types.Projectile) {
-	ge.state.Projectiles = append(ge.state.Projectiles, projectile)
+func (ge *GameEngine) AddProjectile(position types.Vector, speed types.Vector) {
+	ge.mu.Lock()
+	defer ge.mu.Unlock()
+
+	newID := ge.newProjectileID
+	ge.newProjectileID++
+	ge.state.Projectiles[newID] = &types.Projectile{
+		ID:       newID,
+		Rune:     '•',
+		Position: position,
+		Speed:    speed,
+	}
 }
 
-func (ge *GameEngine) disconnectPlayer(playerID types.PlayerID) {
+func (ge *GameEngine) disconnectPlayer(playerID types.ObjectID) {
 	ge.mu.Lock()
 	defer ge.mu.Unlock()
 
@@ -241,11 +253,8 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 		player.PlayerRune = types.DirectionCharMap[cmd.command]
 	case types.SHOOT:
 		ge.AddProjectile(
-			&types.Projectile{
-				Position: player.Position.Add(types.Vector{X: 1, Y: 0}),
-				Speed:    types.Vector{X: 1, Y: 0},
-				Rune:     '•',
-			},
+			player.Position.Add(types.Vector{X: 1, Y: 0}),
+			types.Vector{X: 1, Y: 0},
 		)
 	}
 }
@@ -268,8 +277,12 @@ func (ge *GameEngine) Run() {
 
 func RunGameEngine() *GameEngine {
 	ge := &GameEngine{
-		state:       types.GameState{Players: map[types.PlayerID]*types.Player{}, MapObjects: types.MapObjects},
-		conns:       map[types.PlayerID]*ClinetConn{},
+		state: types.GameState{
+			Players:     types.PlayerMap{},
+			Projectiles: types.ProjectileMap{},
+			MapObjects:  types.MapObjects,
+		},
+		conns:       map[types.ObjectID]*ClinetConn{},
 		engineInput: make(chan engineCommand),
 	}
 	go ge.Run()

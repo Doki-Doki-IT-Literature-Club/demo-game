@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"slices"
@@ -143,23 +142,23 @@ func connectToServer(serverAddress string) Connection {
 	gameStateChannel := make(chan types.GameState)
 	go func() {
 		for {
-			buff := make([]byte, 2, 2)
-			_, err := io.ReadFull(conn, buff)
-			if err == io.EOF {
-				continue
-			}
-			if err != nil {
-				panic(err)
-			}
-			playerNumber := int(buff[0])
-			projectileNumber := int(buff[1])
-			gameStateSize := playerNumber*16 + projectileNumber*12
-			buff = make([]byte, gameStateSize, gameStateSize)
-			_, err = io.ReadFull(conn, buff)
-			if err != nil {
-				panic(err)
-			}
-			gs := types.GameStateFromBytes(buff, playerNumber, projectileNumber)
+			// buff := make([]byte, 2, 2)
+			// _, err := io.ReadFull(conn, buff)
+			// if err == io.EOF {
+			// 	continue
+			// }
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// playerNumber := int(buff[0])
+			// projectileNumber := int(buff[1])
+			// gameStateSize := playerNumber*16 + projectileNumber*12
+			// buff = make([]byte, gameStateSize, gameStateSize)
+			// _, err = io.ReadFull(conn, buff)
+			// if err != nil {
+			// 	panic(err)
+			// }
+			gs := types.GameStateFromBytes(conn)
 			gameStateChannel <- gs
 		}
 	}()
