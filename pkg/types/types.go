@@ -98,13 +98,14 @@ type MovableObject interface {
 
 	GetPosition() Vector
 	SetPosition(Vector)
+	GetCollisionBox() CollisionBox
 }
 
 type Player struct {
-	ID       ObjectID
-	Position Vector
-	Speed    Vector
-
+	CollisionBox
+	ID            ObjectID
+	Position      Vector
+	Speed         Vector
 	IsAirborn     bool
 	ViewDirection Direction
 }
@@ -132,6 +133,9 @@ func (p Player) GetPosition() Vector {
 func (p *Player) SetPosition(position Vector) {
 	p.Position = position
 }
+func (p *Player) GetCollisionBox() CollisionBox {
+	return p.CollisionBox
+}
 
 func (p Player) ToBytes() []byte {
 	pb := [16]byte{}
@@ -156,6 +160,7 @@ func (p *Player) FillFromBytes(reader io.Reader) {
 }
 
 type Projectile struct {
+	CollisionBox
 	ID       ObjectID
 	Rune     rune
 	Position Vector
@@ -176,6 +181,9 @@ func (p Projectile) GetPosition() Vector {
 
 func (p *Projectile) SetPosition(position Vector) {
 	p.Position = position
+}
+func (p *Projectile) GetCollisionBox() CollisionBox {
+	return p.CollisionBox
 }
 
 func (p Projectile) ToString() string {
@@ -283,11 +291,24 @@ func GameStateFromBytes(reader io.Reader) GameState {
 
 // TODO: Map objects should be dynamic and passed from server to client on init
 
-type MapObject struct {
+type CollisionBox struct {
 	BottomLeft Vector
 	TopRight   Vector
-	IsRigid    bool
-	IsVisible  bool
+}
+
+func (cb *CollisionBox) GetCollisionbox() CollisionBox {
+	return *cb
+}
+
+func (cb *CollisionBox) Move(v Vector) {
+	cb.TopRight = cb.TopRight.Add(v)
+	cb.BottomLeft = cb.BottomLeft.Add(v)
+}
+
+type MapObject struct {
+	CollisionBox
+	IsRigid   bool
+	IsVisible bool
 }
 
 func (mo *MapObject) IsWithinX(v Vector) bool {
@@ -298,16 +319,29 @@ func (mo *MapObject) IsWithinY(v Vector) bool {
 	return v.Y >= mo.BottomLeft.Y && v.Y < mo.TopRight.Y
 }
 
-func (mo *MapObject) CollidesWith(v Vector) bool {
-	return mo.IsRigid &&
-		v.X >= mo.BottomLeft.X &&
+func (mo *CollisionBox) IsVectorWithin(v Vector) bool {
+	return v.X >= mo.BottomLeft.X &&
 		v.X < mo.TopRight.X &&
 		v.Y >= mo.BottomLeft.Y &&
 		v.Y < mo.TopRight.Y
 }
 
+func (cb *CollisionBox) IntersectsWithX(other CollisionBox) bool {
+	minRightX := min(cb.TopRight.X, other.TopRight.X)
+	maxLeftX := max(other.BottomLeft.X, other.BottomLeft.X)
+	return minRightX > maxLeftX
+}
+func (cb *CollisionBox) IntersectsWithY(other CollisionBox) bool {
+	minRightY := min(cb.TopRight.X, other.TopRight.X)
+	maxLeftY := max(other.BottomLeft.X, other.BottomLeft.X)
+	return minRightY > maxLeftY
+}
+func (cb *CollisionBox) IntersectsWith(other CollisionBox) bool {
+	return cb.IntersectsWithX(other) && cb.IntersectsWithY(other)
+}
+
 var MapObjects = []MapObject{
-	{BottomLeft: Vector{X: 10, Y: 0}, TopRight: Vector{X: 15, Y: 10}, IsRigid: true, IsVisible: true},
+	{CollisionBox: CollisionBox{BottomLeft: Vector{X: 10, Y: 0}, TopRight: Vector{X: 15, Y: 10}}, IsRigid: true, IsVisible: true},
 	{BottomLeft: Vector{X: 17, Y: 15}, TopRight: Vector{X: 30, Y: 18}, IsRigid: true, IsVisible: true},
 
 	// Map borders

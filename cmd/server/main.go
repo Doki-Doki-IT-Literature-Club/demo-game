@@ -123,6 +123,7 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 
 func (ge *GameEngine) MoveObject(obj types.MovableObject) *types.MapObject {
 	speed := obj.GetSpeed()
+	collisionBox := obj.GetCollisionBox()
 	position := obj.GetPosition()
 
 	singleVector := speed.SingleVector()
@@ -132,15 +133,14 @@ func (ge *GameEngine) MoveObject(obj types.MovableObject) *types.MapObject {
 		maxIterations = 1
 	}
 
-	lastPossible := types.Vector{X: position.X, Y: position.Y}
+	lastPossible := types.CollisionBox{BottomLeft: collisionBox.BottomLeft.Add(position), TopRight: collisionBox.TopRight.Add(position)}
 	fmt.Printf("single vector: %+v\n", singleVector.ToString())
-	fmt.Printf("current position: %+v\n", lastPossible.ToString())
 
 	var collidesWith *types.MapObject = nil
 movementLoop:
 	for range maxIterations {
-		possiblePosition := lastPossible.Add(singleVector)
-		fmt.Printf("possible position: %s\n", possiblePosition.ToString())
+		possiblePosition := types.CollisionBox{lastPossible.BottomLeft, lastPossible.TopRight}
+		possiblePosition.Move(singleVector)
 
 		collides := true
 
@@ -148,43 +148,44 @@ movementLoop:
 		for collides {
 			collides = false
 			for _, mo := range ge.state.MapObjects {
-				if mo.CollidesWith(possiblePosition) {
-					collides = true
-					if mo.IsWithinX(lastPossible) {
-						// Already was within X bounds, meaning collision happend during Y movement
-						fmt.Printf("* Y Collision detected with %s, %s\n", mo.BottomLeft.ToString(), mo.TopRight.ToString())
-						speed.Y = 0
-						singleVector.Y = 0
-					} else if mo.IsWithinY(lastPossible) {
-						// Already was within Y bounds, meaning collision happend during X movement
-						fmt.Printf("* X Collision detected with %s, %s\n", mo.BottomLeft.ToString(), mo.TopRight.ToString())
-						speed.X = 0
-						singleVector.X = 0
-					} else {
-						// Diagonal collision
-						speed.X = 0
-						speed.Y = 0
-						singleVector.X = 0
-						singleVector.Y = 0
-						fmt.Printf("Diagonal collision with %s, %s", mo.BottomLeft.ToString(), mo.TopRight.ToString())
-					}
-
-					collidesWith = &mo
+				if !mo.IntersectsWith(possiblePosition) {
+					continue
 				}
+
+				if mo.IntersectsWithX(lastPossible) {
+					// Already was within X bounds, meaning collision happend during Y movement
+					fmt.Printf("* Y Collision detected with %s, %s\n", mo.BottomLeft.ToString(), mo.TopRight.ToString())
+					speed.Y = 0
+					singleVector.Y = 0
+				} else if mo.IntersectsWithY(lastPossible) {
+					// Already was within Y bounds, meaning collision happend during X movement
+					fmt.Printf("* X Collision detected with %s, %s\n", mo.BottomLeft.ToString(), mo.TopRight.ToString())
+					speed.X = 0
+					singleVector.X = 0
+				} else {
+					// Diagonal collision
+					speed.X = 0
+					speed.Y = 0
+					singleVector.X = 0
+					singleVector.Y = 0
+					fmt.Printf("Diagonal collision with %s, %s", mo.BottomLeft.ToString(), mo.TopRight.ToString())
+				}
+
+				collides = true
+				collidesWith = &mo
 			}
-			possiblePosition = lastPossible.Add(singleVector)
+
+			possiblePosition.Move(singleVector)
 			i += 1
 			if i > 3 {
 				fmt.Printf("object %v stuck inside something\n", obj)
 				break movementLoop
 			}
-			fmt.Printf("adjusted possible position: %s\n", possiblePosition.ToString())
 		}
 		lastPossible = possiblePosition
 	}
-	fmt.Printf("selected position: %s\n\n\n", lastPossible.ToString())
 	obj.SetSpeed(speed)
-	obj.SetPosition(lastPossible)
+	obj.SetPosition(lastPossible.BottomLeft)
 	return collidesWith
 }
 
