@@ -15,6 +15,8 @@ Simple online game with terminal rendering
 - [X] walls
 - [x] directions
 - [x] projectiles simple
+- [x] collision boxes
+- [ ] fix collision boxes
 - [ ] projectile collision with players
 - [ ] control sum for server package (?)
 - [ ] map
