@@ -92,19 +92,30 @@ func (v Vector) ToString() string {
 	return fmt.Sprintf("{X: %.2f | Y: %.2f}", v.X, v.Y)
 }
 
+type CollisionArea Vector
+
+func (ca CollisionArea) ToCollisionBox(position Vector) CollisionBox {
+	return CollisionBox{
+		BottomLeft: position,
+		TopRight:   position.Add(Vector(ca)),
+		IsRigid:    true,
+	}
+}
+
 type MovableObject interface {
 	GetSpeed() Vector
 	SetSpeed(Vector)
 
 	GetPosition() Vector
 	SetPosition(Vector)
-	GetCollisionBox() CollisionBox
+
+	GetCollisionArea() CollisionArea
 }
 
 type Player struct {
-	CollisionBox
 	ID            ObjectID
 	Position      Vector
+	CollisionArea CollisionArea
 	Speed         Vector
 	IsAirborn     bool
 	ViewDirection Direction
@@ -133,8 +144,13 @@ func (p Player) GetPosition() Vector {
 func (p *Player) SetPosition(position Vector) {
 	p.Position = position
 }
+
+func (p *Player) GetCollisionArea() CollisionArea {
+	return p.CollisionArea
+}
+
 func (p *Player) GetCollisionBox() CollisionBox {
-	return p.CollisionBox
+	return p.CollisionArea.ToCollisionBox(p.Position)
 }
 
 func (p Player) ToBytes() []byte {
@@ -160,11 +176,11 @@ func (p *Player) FillFromBytes(reader io.Reader) {
 }
 
 type Projectile struct {
-	CollisionBox
-	ID       ObjectID
-	Rune     rune
-	Position Vector
-	Speed    Vector
+	ID            ObjectID
+	Rune          rune
+	Position      Vector
+	Speed         Vector
+	CollisionArea CollisionArea
 }
 
 func (p Projectile) GetSpeed() Vector {
@@ -182,8 +198,13 @@ func (p Projectile) GetPosition() Vector {
 func (p *Projectile) SetPosition(position Vector) {
 	p.Position = position
 }
+
+func (p *Projectile) GetCollisionArea() CollisionArea {
+	return p.CollisionArea
+}
+
 func (p *Projectile) GetCollisionBox() CollisionBox {
-	return p.CollisionBox
+	return p.CollisionArea.ToCollisionBox(p.Position)
 }
 
 func (p Projectile) ToString() string {
@@ -294,59 +315,51 @@ func GameStateFromBytes(reader io.Reader) GameState {
 type CollisionBox struct {
 	BottomLeft Vector
 	TopRight   Vector
+	IsRigid    bool
 }
 
-func (cb *CollisionBox) GetCollisionbox() CollisionBox {
-	return *cb
+func (cb CollisionBox) IsVectorWithin(v Vector) bool {
+	return v.X >= cb.BottomLeft.X &&
+		v.X < cb.TopRight.X &&
+		v.Y >= cb.BottomLeft.Y &&
+		v.Y < cb.TopRight.Y
 }
 
-func (cb *CollisionBox) Move(v Vector) {
-	cb.TopRight = cb.TopRight.Add(v)
-	cb.BottomLeft = cb.BottomLeft.Add(v)
-}
-
-type MapObject struct {
-	CollisionBox
-	IsRigid   bool
-	IsVisible bool
-}
-
-func (mo *MapObject) IsWithinX(v Vector) bool {
-	return v.X >= mo.BottomLeft.X && v.X < mo.TopRight.X
-}
-
-func (mo *MapObject) IsWithinY(v Vector) bool {
-	return v.Y >= mo.BottomLeft.Y && v.Y < mo.TopRight.Y
-}
-
-func (mo *CollisionBox) IsVectorWithin(v Vector) bool {
-	return v.X >= mo.BottomLeft.X &&
-		v.X < mo.TopRight.X &&
-		v.Y >= mo.BottomLeft.Y &&
-		v.Y < mo.TopRight.Y
-}
-
-func (cb *CollisionBox) IntersectsWithX(other CollisionBox) bool {
+func (cb CollisionBox) IntersectsWithX(other CollisionBox) bool {
 	minRightX := min(cb.TopRight.X, other.TopRight.X)
-	maxLeftX := max(other.BottomLeft.X, other.BottomLeft.X)
+	maxLeftX := max(cb.BottomLeft.X, other.BottomLeft.X)
 	return minRightX > maxLeftX
 }
-func (cb *CollisionBox) IntersectsWithY(other CollisionBox) bool {
-	minRightY := min(cb.TopRight.X, other.TopRight.X)
-	maxLeftY := max(other.BottomLeft.X, other.BottomLeft.X)
+func (cb CollisionBox) IntersectsWithY(other CollisionBox) bool {
+	minRightY := min(cb.TopRight.Y, other.TopRight.Y)
+	maxLeftY := max(cb.BottomLeft.Y, other.BottomLeft.Y)
 	return minRightY > maxLeftY
 }
-func (cb *CollisionBox) IntersectsWith(other CollisionBox) bool {
+func (cb CollisionBox) IntersectsWith(other CollisionBox) bool {
 	return cb.IntersectsWithX(other) && cb.IntersectsWithY(other)
 }
 
+func (cb CollisionBox) ToString() string {
+	return fmt.Sprintf("[%s, %s]", cb.BottomLeft.ToString(), cb.TopRight.ToString())
+}
+
+type MapObject struct {
+	Position      Vector
+	CollisionArea CollisionArea
+	IsVisible     bool
+}
+
+func (mo MapObject) GetCollisionBox() CollisionBox {
+	return mo.CollisionArea.ToCollisionBox(mo.Position)
+}
+
 var MapObjects = []MapObject{
-	{CollisionBox: CollisionBox{BottomLeft: Vector{X: 10, Y: 0}, TopRight: Vector{X: 15, Y: 10}}, IsRigid: true, IsVisible: true},
-	{BottomLeft: Vector{X: 17, Y: 15}, TopRight: Vector{X: 30, Y: 18}, IsRigid: true, IsVisible: true},
+	{Position: Vector{X: 10, Y: 0}, CollisionArea: CollisionArea{X: 5, Y: 10}, IsVisible: true},
+	{Position: Vector{X: 17, Y: 15}, CollisionArea: CollisionArea{X: 13, Y: 3}, IsVisible: true},
 
 	// Map borders
-	{BottomLeft: Vector{X: -1, Y: -1}, TopRight: Vector{X: FieldMaxX + 1, Y: 0}, IsRigid: true},                    // Bottom
-	{BottomLeft: Vector{X: -1, Y: FieldMaxY}, TopRight: Vector{X: FieldMaxX + 1, Y: FieldMaxY + 1}, IsRigid: true}, // Top
-	{BottomLeft: Vector{X: -1, Y: -1}, TopRight: Vector{X: 0, Y: FieldMaxY + 1}, IsRigid: true},                    // Left
-	{BottomLeft: Vector{X: FieldMaxX, Y: -1}, TopRight: Vector{X: FieldMaxX + 1, Y: FieldMaxY + 1}, IsRigid: true}, // Left
+	{Position: Vector{X: -1, Y: -1}, CollisionArea: CollisionArea{X: FieldMaxX + 2, Y: 1}},                    // Bottom
+	{Position: Vector{X: -1, Y: FieldMaxY}, CollisionArea: CollisionArea{X: FieldMaxX + 2, Y: FieldMaxY + 2}}, // Top
+	{Position: Vector{X: -1, Y: -1}, CollisionArea: CollisionArea{X: 1, Y: FieldMaxY + 2}},                    // Left
+	{Position: Vector{X: FieldMaxX, Y: -1}, CollisionArea: CollisionArea{X: FieldMaxX + 2, Y: FieldMaxY + 2}}, // Right
 }

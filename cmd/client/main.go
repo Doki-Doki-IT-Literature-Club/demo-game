@@ -120,8 +120,9 @@ func (g *LocalGame) Render() string {
 		if !mo.IsVisible {
 			continue
 		}
-		for y := mo.BottomLeft.Y; y < mo.TopRight.Y; y++ {
-			for x := mo.BottomLeft.X; x < mo.TopRight.X; x++ {
+		cb := mo.GetCollisionBox()
+		for y := cb.BottomLeft.Y; y < cb.TopRight.Y; y++ {
+			for x := cb.BottomLeft.X; x < cb.TopRight.X; x++ {
 				// TODO: textures?
 				field[int32(y)][int32(x)] = mapObjRenderChar
 			}
