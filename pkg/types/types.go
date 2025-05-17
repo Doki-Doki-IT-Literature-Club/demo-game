@@ -157,8 +157,8 @@ func (p Player) ToBytes() []byte {
 	pb := [16]byte{}
 	binary.BigEndian.PutUint32(pb[:4], uint32(p.ID))
 	binary.BigEndian.PutUint32(pb[4:8], uint32(p.ViewDirection))
-	binary.BigEndian.PutUint32(pb[8:12], uint32(p.Position.X))
-	binary.BigEndian.PutUint32(pb[12:], uint32(p.Position.Y))
+	binary.BigEndian.PutUint32(pb[8:12], uint32(math.Round(p.Position.X)))
+	binary.BigEndian.PutUint32(pb[12:], uint32(math.Round(p.Position.Y)))
 	return pb[:]
 }
 
