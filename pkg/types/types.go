@@ -318,6 +318,10 @@ type CollisionBox struct {
 	IsRigid    bool
 }
 
+func (cb *CollisionBox) Add(v Vector) CollisionBox {
+	return CollisionBox{BottomLeft: cb.BottomLeft.Add(v), TopRight: cb.TopRight.Add(v), IsRigid: cb.IsRigid}
+}
+
 func (cb CollisionBox) IsVectorWithin(v Vector) bool {
 	return v.X >= cb.BottomLeft.X &&
 		v.X < cb.TopRight.X &&
