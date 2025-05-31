@@ -131,9 +131,10 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 }
 
 func (ge *GameEngine) detectCollision(
+	selfID types.ObjectID,
 	currentBox types.CollisionBox,
 	movement types.Vector,
-) *types.MapObject {
+) types.CollidableObject {
 	possibleCollisionBox := currentBox.Add(movement)
 
 	fmt.Printf("Possible collision box: %s\n", possibleCollisionBox.ToString())
@@ -146,6 +147,16 @@ func (ge *GameEngine) detectCollision(
 			return &mo
 		}
 	}
+
+	for _, p := range ge.state.Players {
+		if p.ID == selfID {
+			continue
+		}
+		playerCollisionBox := p.CollisionArea.ToCollisionBox(p.Position)
+		if playerCollisionBox.IntersectsWith(possibleCollisionBox) {
+			return p
+		}
+	}
 	return nil
 }
 
@@ -153,9 +164,9 @@ func getSpeedsAfterCollision(
 	current types.CollisionBox,
 	speed types.Vector,
 	stepVector types.Vector,
-	collidesWith *types.MapObject,
+	collidesWith types.CollidableObject,
 ) (types.Vector, types.Vector) {
-	collidedWithBox := collidesWith.GetCollisionBox()
+	collidedWithBox := collidesWith.GetCollisionArea().ToCollisionBox(collidesWith.GetPosition())
 	if collidedWithBox.IntersectsWithX(current) {
 		// Already was within X bounds, meaning collision happend during Y movement
 		fmt.Printf("* Y Collision detected with %s\n", collidedWithBox.ToString())
@@ -187,15 +198,15 @@ func getStepVectorWithIterations(v types.Vector) (types.Vector, int) {
 	return singleVector, int(maxIterations)
 }
 
-func (ge *GameEngine) MoveObject(obj types.MovableObject) *types.MapObject {
+func (ge *GameEngine) MoveObject(obj types.MovableObject) types.CollidableObject {
 	speed := obj.GetSpeed()
 	stepVector, maxIterations := getStepVectorWithIterations(speed)
 
 	lastPossibleCollisionBox := obj.GetCollisionArea().ToCollisionBox(obj.GetPosition())
 
-	var collidesWith *types.MapObject = nil
+	var collidesWith types.CollidableObject = nil
 	for range maxIterations {
-		possibleCollision := ge.detectCollision(lastPossibleCollisionBox, stepVector)
+		possibleCollision := ge.detectCollision(obj.GetID(), lastPossibleCollisionBox, stepVector)
 		if possibleCollision == nil {
 			lastPossibleCollisionBox = lastPossibleCollisionBox.Add(stepVector)
 			continue
@@ -210,7 +221,7 @@ func (ge *GameEngine) MoveObject(obj types.MovableObject) *types.MapObject {
 			collidesWith,
 		)
 
-		possibleCollision = ge.detectCollision(lastPossibleCollisionBox, stepVector)
+		possibleCollision = ge.detectCollision(obj.GetID(), lastPossibleCollisionBox, stepVector)
 		if possibleCollision == nil {
 			lastPossibleCollisionBox = lastPossibleCollisionBox.Add(stepVector)
 			continue
@@ -237,6 +248,11 @@ func (ge *GameEngine) calculateState() {
 		fmt.Printf("%s\n", player.ToString())
 
 		ge.MoveObject(player)
+
+		if player.HP == 0 {
+			ge.disconnectPlayer(player.ID)
+			continue
+		}
 
 		// "slowing"
 		// TODO: airborn not working now
@@ -272,6 +288,7 @@ func (ge *GameEngine) calculateState() {
 		collidesWith := ge.MoveObject(proj)
 		if collidesWith != nil {
 			fmt.Printf("Collides with: %v\n", collidesWith)
+			collidesWith.OnCollision(proj)
 			ge.removeProjectile(proj.ID)
 		}
 	}
@@ -284,27 +301,27 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	}
 	switch cmd.command {
 	case types.UP:
-		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 5})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 3})
 		// TODO: update player direction, don't set Rune
 		player.ViewDirection = types.D_UP
 	case types.DOWN:
-		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -5})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -3})
 		player.ViewDirection = types.D_DOWN
 	case types.LEFT:
 		if player.Speed.X < -MAX_X_SPEED {
 			break
 		}
-		player.Speed = player.Speed.Add(types.Vector{X: -3, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: -2, Y: 0})
 		player.ViewDirection = types.D_LEFT
 	case types.RIGHT:
 		if player.Speed.X > MAX_X_SPEED {
 			break
 		}
-		player.Speed = player.Speed.Add(types.Vector{X: 3, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: 2, Y: 0})
 		player.ViewDirection = types.D_RIGHT
 	case types.SHOOT:
 		ge.AddProjectile(
-			player.Position.Add(types.Vector{X: 1, Y: 0}),
+			player.Position.Add(player.ViewDirection.AsVector()),
 			player.ViewDirection.AsVector().Multiply(2.0),
 		)
 	}

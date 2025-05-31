@@ -102,14 +102,20 @@ func (ca CollisionArea) ToCollisionBox(position Vector) CollisionBox {
 	}
 }
 
+type CollidableObject interface {
+	GetPosition() Vector
+	GetCollisionArea() CollisionArea
+	OnCollision(CollidableObject)
+}
+
 type MovableObject interface {
+	CollidableObject
+
+	GetID() ObjectID
 	GetSpeed() Vector
 	SetSpeed(Vector)
 
-	GetPosition() Vector
 	SetPosition(Vector)
-
-	GetCollisionArea() CollisionArea
 }
 
 type Player struct {
@@ -130,6 +136,10 @@ func (p *Player) ToString() string {
 	return fmt.Sprintf("Player: %c%s, Position: %s, Speed: %s", p.ViewDirection.AsRune(), airbornStr, p.Position.ToString(), p.Speed.ToString())
 }
 
+func (p Player) GetID() ObjectID {
+	return p.ID
+}
+
 func (p Player) GetSpeed() Vector {
 	return p.Speed
 }
@@ -146,12 +156,21 @@ func (p *Player) SetPosition(position Vector) {
 	p.Position = position
 }
 
-func (p *Player) GetCollisionArea() CollisionArea {
+func (p Player) GetCollisionArea() CollisionArea {
 	return p.CollisionArea
 }
 
-func (p *Player) GetCollisionBox() CollisionBox {
+func (p Player) GetCollisionBox() CollisionBox {
 	return p.CollisionArea.ToCollisionBox(p.Position)
+}
+
+func (p *Player) OnCollision(co CollidableObject) {
+	switch co.(type) {
+	case *Projectile:
+		p.HP -= 1
+	default:
+		return
+	}
 }
 
 func (p Player) ToBytes() []byte {
@@ -186,6 +205,10 @@ type Projectile struct {
 	CollisionArea CollisionArea
 }
 
+func (p Projectile) GetID() ObjectID {
+	return p.ID
+}
+
 func (p Projectile) GetSpeed() Vector {
 	return p.Speed
 }
@@ -202,12 +225,16 @@ func (p *Projectile) SetPosition(position Vector) {
 	p.Position = position
 }
 
-func (p *Projectile) GetCollisionArea() CollisionArea {
+func (p Projectile) GetCollisionArea() CollisionArea {
 	return p.CollisionArea
 }
 
-func (p *Projectile) GetCollisionBox() CollisionBox {
+func (p Projectile) GetCollisionBox() CollisionBox {
 	return p.CollisionArea.ToCollisionBox(p.Position)
+}
+
+func (p *Projectile) OnCollision(co CollidableObject) {
+	return
 }
 
 func (p Projectile) ToString() string {
@@ -384,8 +411,20 @@ type MapObject struct {
 	IsVisible     bool
 }
 
+func (mo MapObject) GetPosition() Vector {
+	return mo.Position
+}
+
+func (mo MapObject) GetCollisionArea() CollisionArea {
+	return mo.CollisionArea
+}
+
 func (mo MapObject) GetCollisionBox() CollisionBox {
 	return mo.CollisionArea.ToCollisionBox(mo.Position)
+}
+
+func (mo MapObject) OnCollision(CollidableObject) {
+	return
 }
 
 var MapObjects = []MapObject{
