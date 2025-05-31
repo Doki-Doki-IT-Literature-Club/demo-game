@@ -279,13 +279,13 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 		if player.Speed.X < -MAX_X_SPEED {
 			break
 		}
-		player.Speed = player.Speed.Add(types.Vector{X: -3, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: -1, Y: 0})
 		player.ViewDirection = types.D_LEFT
 	case types.RIGHT:
 		if player.Speed.X > MAX_X_SPEED {
 			break
 		}
-		player.Speed = player.Speed.Add(types.Vector{X: 3, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: 1, Y: 0})
 		player.ViewDirection = types.D_RIGHT
 	case types.SHOOT:
 		ge.AddProjectile(
