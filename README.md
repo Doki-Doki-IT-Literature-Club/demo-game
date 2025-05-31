@@ -16,11 +16,15 @@ Simple online game with terminal rendering
 - [x] directions
 - [x] projectiles simple
 - [x] collision boxes
-- [ ] hug the wall (move as close as possible when step vector is inside the wall)
+- [x] fix collision boxes
+- [x] projectile collision with players
+- [ ] do we want to shoot up / down? 
+- [ ] bullets hitting self when moving
+- [ ] tick rate
+- [ ] map editor (?)
+- [ ] game score
 - [ ] Interface
-- [ ] fix collision boxes
-- [ ] projectile collision with players
+- [ ] hug the wall (move as close as possible when step vector is inside the wall)
 - [ ] control sum for server package (?)
-- [ ] map
 - [ ] camera rendering based on player position
 ```

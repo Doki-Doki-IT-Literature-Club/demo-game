@@ -92,7 +92,7 @@ func (ge *GameEngine) disconnectPlayer(playerID types.ObjectID) {
 
 }
 
-func (ge *GameEngine) HangleConnection(conn net.Conn) {
+func (ge *GameEngine) HandleConnection(conn net.Conn) {
 	fmt.Printf("New connection: %v\n", conn)
 	write := make(chan types.GameState)
 	cliConn := &ClinetConn{write}
@@ -381,6 +381,6 @@ func main() {
 			panic(err)
 		}
 
-		go ge.HangleConnection(conn)
+		go ge.HandleConnection(conn)
 	}
 }
