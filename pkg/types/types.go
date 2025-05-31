@@ -119,7 +119,7 @@ type Player struct {
 	Speed         Vector
 	IsAirborn     bool
 	ViewDirection Direction
-	HP            int
+	HP            uint32
 }
 
 func (p *Player) ToString() string {
@@ -155,16 +155,17 @@ func (p *Player) GetCollisionBox() CollisionBox {
 }
 
 func (p Player) ToBytes() []byte {
-	pb := [16]byte{}
+	pb := [20]byte{}
 	binary.BigEndian.PutUint32(pb[:4], uint32(p.ID))
 	binary.BigEndian.PutUint32(pb[4:8], uint32(p.ViewDirection))
 	binary.BigEndian.PutUint32(pb[8:12], uint32(math.Round(p.Position.X)))
-	binary.BigEndian.PutUint32(pb[12:], uint32(math.Round(p.Position.Y)))
+	binary.BigEndian.PutUint32(pb[12:16], uint32(math.Round(p.Position.Y)))
+	binary.BigEndian.PutUint32(pb[16:], p.HP)
 	return pb[:]
 }
 
 func (p *Player) FillFromBytes(reader io.Reader) {
-	data := make([]byte, 16, 16)
+	data := make([]byte, 20)
 	_, err := reader.Read(data)
 	if err != nil {
 		panic(err)
@@ -174,6 +175,7 @@ func (p *Player) FillFromBytes(reader io.Reader) {
 	X := binary.BigEndian.Uint32(data[8:12])
 	Y := binary.BigEndian.Uint32(data[12:16])
 	p.Position = Vector{float64(X), float64(Y)}
+	p.HP = binary.BigEndian.Uint32(data[16:20])
 }
 
 type Projectile struct {
@@ -288,6 +290,33 @@ func (pm ProjectileMap) FillFromBytes(reader io.Reader) {
 	}
 }
 
+type InitializationData struct {
+	PlayerID ObjectID
+}
+
+func (initData *InitializationData) ToBytes() []byte {
+	res := [4]byte{}
+	binary.BigEndian.PutUint32(res[:4], uint32(initData.PlayerID))
+	return res[:]
+}
+
+func (initData *InitializationData) FillFromBytes(reader io.Reader) {
+	playerIDBuff := [4]byte{}
+	_, err := reader.Read(playerIDBuff[:])
+	if err != nil {
+		panic(err)
+	}
+
+	playerID := ObjectID(binary.BigEndian.Uint32(playerIDBuff[:4]))
+	initData.PlayerID = playerID
+}
+
+func InitializationDataFromBytes(reader io.Reader) InitializationData {
+	initializationData := InitializationData{}
+	initializationData.FillFromBytes(reader)
+	return initializationData
+}
+
 type GameState struct {
 	Players     PlayerMap
 	Projectiles ProjectileMap
@@ -296,6 +325,7 @@ type GameState struct {
 
 func (gs *GameState) ToBytes() []byte {
 	res := []byte{}
+
 	res = append(res, gs.Players.ToBytes()...)
 	res = append(res, gs.Projectiles.ToBytes()...)
 	return res

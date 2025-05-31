@@ -24,12 +24,13 @@ type Connection struct {
 	commandsChan  chan<- types.Command
 }
 
-func initialModel(conn Connection) model {
+func initialModel(conn Connection, initData types.InitializationData) model {
 	return model{
 		LocalGame{
 			field_x:        types.FieldMaxX,
 			field_y:        types.FieldMaxY,
 			emptyFiledRune: ' ',
+			playerID:       initData.PlayerID,
 			connection:     conn,
 			mapObjects:     types.MapObjects,
 		},
@@ -85,7 +86,18 @@ type LocalGame struct {
 	emptyFiledRune rune
 	currentState   types.GameState
 	connection     Connection
+	playerID       types.ObjectID
 	mapObjects     []types.MapObject
+}
+
+func (g *LocalGame) getInterfaceRow() string {
+	debugInfo := fmt.Sprintf("Players: %d, projectiles: %d\n", len(g.currentState.Players), len(g.currentState.Projectiles))
+	interfaceString := "INTERFACE HERE"
+	localPlyaer, exists := g.currentState.Players[g.playerID]
+	if exists {
+		interfaceString = fmt.Sprintf("HP: %d\n", localPlyaer.HP)
+	}
+	return fmt.Sprintf("%s%s", debugInfo, interfaceString)
 }
 
 func (g *LocalGame) Render() string {
@@ -129,7 +141,7 @@ func (g *LocalGame) Render() string {
 		}
 	}
 
-	res := fmt.Sprintf("Players: %d, projectiles: %d\n", len(g.currentState.Players), len(g.currentState.Projectiles))
+	res := g.getInterfaceRow()
 	slices.Reverse(field)
 	for _, row := range field {
 		res += string(row) + "\n"
@@ -141,7 +153,7 @@ func (g *LocalGame) SendCommand(direction types.Command) {
 	g.connection.commandsChan <- direction
 }
 
-func connectToServer(serverAddress string) Connection {
+func connectToServer(serverAddress string) (Connection, types.InitializationData) {
 	conn, err := net.Dial("tcp", serverAddress)
 	if err != nil {
 		fmt.Println("Error connecting:", err)
@@ -149,6 +161,7 @@ func connectToServer(serverAddress string) Connection {
 	}
 
 	fmt.Println("Connected to", serverAddress)
+	initializationData := types.InitializationDataFromBytes(conn)
 
 	gameStateChannel := make(chan types.GameState)
 	go func() {
@@ -168,7 +181,7 @@ func connectToServer(serverAddress string) Connection {
 		}
 	}()
 
-	return Connection{gameStateChannel, commandChannel}
+	return Connection{gameStateChannel, commandChannel}, initializationData
 }
 
 func main() {
@@ -176,8 +189,8 @@ func main() {
 	if len(os.Args) > 1 {
 		serverAddress = os.Args[1]
 	}
-	conn := connectToServer(serverAddress)
-	p := tea.NewProgram(initialModel(conn))
+	conn, initData := connectToServer(serverAddress)
+	p := tea.NewProgram(initialModel(conn, initData))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)

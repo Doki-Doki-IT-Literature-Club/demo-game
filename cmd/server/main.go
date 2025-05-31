@@ -56,6 +56,7 @@ func (ge *GameEngine) addPlayer(conn *ClinetConn) types.ObjectID {
 			Y: float64(len(ge.state.Players)),
 		},
 		CollisionArea: types.CollisionArea{X: 1, Y: 1},
+		HP:            5,
 	}
 	return newID
 }
@@ -96,6 +97,12 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 	write := make(chan types.GameState)
 	cliConn := &ClinetConn{write}
 	playerID := ge.addPlayer(cliConn)
+	initData := types.InitializationData{PlayerID: playerID}
+	_, err := conn.Write(initData.ToBytes())
+	if err != nil {
+		ge.disconnectPlayer(playerID)
+		return
+	}
 
 	go func() {
 		for state := range write {
