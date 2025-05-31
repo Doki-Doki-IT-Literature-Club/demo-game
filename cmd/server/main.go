@@ -109,7 +109,7 @@ func (ge *GameEngine) HangleConnection(conn net.Conn) {
 
 	go func() {
 		for {
-			buff := make([]byte, 1, 1)
+			buff := make([]byte, 1)
 			_, err := io.ReadFull(conn, buff)
 			if err == io.EOF {
 				continue
@@ -142,27 +142,32 @@ func (ge *GameEngine) detectCollision(
 	return nil
 }
 
-func foo(current types.CollisionBox, movement types.Vector, singleVector types.Vector, collidesWith *types.MapObject) (types.Vector, types.Vector) {
+func getSpeedsAfterCollision(
+	current types.CollisionBox,
+	speed types.Vector,
+	stepVector types.Vector,
+	collidesWith *types.MapObject,
+) (types.Vector, types.Vector) {
 	collidedWithBox := collidesWith.GetCollisionBox()
 	if collidedWithBox.IntersectsWithX(current) {
 		// Already was within X bounds, meaning collision happend during Y movement
 		fmt.Printf("* Y Collision detected with %s\n", collidedWithBox.ToString())
-		movement.Y = 0
-		singleVector.Y = 0
+		speed.Y = 0
+		stepVector.Y = 0
 	} else if collidedWithBox.IntersectsWithY(current) {
 		// Already was within Y bounds, meaning collision happend during X movement
 		fmt.Printf("* X Collision detected with %s\n", collidedWithBox.ToString())
-		movement.X = 0
-		singleVector.X = 0
+		speed.X = 0
+		stepVector.X = 0
 	} else {
 		// Diagonal collision
-		movement.X = 0
-		movement.Y = 0
-		singleVector.X = 0
-		singleVector.Y = 0
+		speed.X = 0
+		speed.Y = 0
+		stepVector.X = 0
+		stepVector.Y = 0
 		fmt.Printf("Diagonal collision with %s\n", collidedWithBox.ToString())
 	}
-	return movement, singleVector
+	return speed, stepVector
 }
 
 func getStepVectorWithIterations(v types.Vector) (types.Vector, int) {
@@ -183,26 +188,29 @@ func (ge *GameEngine) MoveObject(obj types.MovableObject) *types.MapObject {
 
 	var collidesWith *types.MapObject = nil
 	for range maxIterations {
-		collidesWith = ge.detectCollision(lastPossibleCollisionBox, stepVector)
-		if collidesWith == nil {
+		possibleCollision := ge.detectCollision(lastPossibleCollisionBox, stepVector)
+		if possibleCollision == nil {
 			lastPossibleCollisionBox = lastPossibleCollisionBox.Add(stepVector)
 			continue
 		}
 
-		speed, stepVector = foo(
+		collidesWith = possibleCollision
+
+		speed, stepVector = getSpeedsAfterCollision(
 			lastPossibleCollisionBox,
 			speed,
 			stepVector,
 			collidesWith,
 		)
-		collidesWith = ge.detectCollision(lastPossibleCollisionBox, stepVector)
 
-		if collidesWith == nil {
+		possibleCollision = ge.detectCollision(lastPossibleCollisionBox, stepVector)
+		if possibleCollision == nil {
 			lastPossibleCollisionBox = lastPossibleCollisionBox.Add(stepVector)
 			continue
 		}
+		collidesWith = possibleCollision
 
-		speed, stepVector = foo(
+		speed, stepVector = getSpeedsAfterCollision(
 			lastPossibleCollisionBox,
 			speed,
 			stepVector,
@@ -279,13 +287,13 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 		if player.Speed.X < -MAX_X_SPEED {
 			break
 		}
-		player.Speed = player.Speed.Add(types.Vector{X: -1, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: -3, Y: 0})
 		player.ViewDirection = types.D_LEFT
 	case types.RIGHT:
 		if player.Speed.X > MAX_X_SPEED {
 			break
 		}
-		player.Speed = player.Speed.Add(types.Vector{X: 1, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: 3, Y: 0})
 		player.ViewDirection = types.D_RIGHT
 	case types.SHOOT:
 		ge.AddProjectile(
