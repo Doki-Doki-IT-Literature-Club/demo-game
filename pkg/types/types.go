@@ -119,6 +119,7 @@ type Player struct {
 	Speed         Vector
 	IsAirborn     bool
 	ViewDirection Direction
+	HP            int
 }
 
 func (p *Player) ToString() string {
