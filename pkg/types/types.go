@@ -321,7 +321,7 @@ type InitializationData struct {
 	PlayerID ObjectID
 }
 
-func (initData *InitializationData) ToBytes() []byte {
+func (initData InitializationData) ToBytes() []byte {
 	res := [4]byte{}
 	binary.BigEndian.PutUint32(res[:4], uint32(initData.PlayerID))
 	return res[:]
@@ -350,7 +350,7 @@ type GameState struct {
 	MapObjects  []MapObject
 }
 
-func (gs *GameState) ToBytes() []byte {
+func (gs GameState) ToBytes() []byte {
 	res := []byte{}
 
 	res = append(res, gs.Players.ToBytes()...)

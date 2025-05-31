@@ -301,11 +301,11 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	}
 	switch cmd.command {
 	case types.UP:
-		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 3})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 4})
 		// TODO: update player direction, don't set Rune
 		player.ViewDirection = types.D_UP
 	case types.DOWN:
-		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -3})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -4})
 		player.ViewDirection = types.D_DOWN
 	case types.LEFT:
 		if player.Speed.X < -MAX_X_SPEED {
