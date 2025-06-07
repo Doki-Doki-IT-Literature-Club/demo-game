@@ -6,3 +6,6 @@ run_client:
 
 run_server:
 	go run cmd/server/main.go ${port}
+
+run_map_editor:
+	go run cmd/mapeditor/main.go

@@ -2,9 +2,11 @@ package types
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
+	"os"
 )
 
 type ObjectID uint32
@@ -56,12 +58,12 @@ func (d Direction) AsRune() rune {
 	panic("Unsupported direction")
 }
 
-const FieldMaxX = 50
-const FieldMaxY = 30
+const FieldMaxX = 500
+const FieldMaxY = 500
 
 type Vector struct {
-	X float64
-	Y float64
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 func (v Vector) Add(other Vector) Vector {
@@ -406,9 +408,9 @@ func (cb CollisionBox) ToString() string {
 }
 
 type MapObject struct {
-	Position      Vector
-	CollisionArea CollisionArea
-	IsVisible     bool
+	Position      Vector        `json:"position"`
+	CollisionArea CollisionArea `json:"collision_area"`
+	IsVisible     bool          `json:"is_visible"`
 }
 
 func (mo MapObject) GetPosition() Vector {
@@ -427,13 +429,25 @@ func (mo MapObject) OnCollision(CollidableObject) {
 	return
 }
 
-var MapObjects = []MapObject{
-	{Position: Vector{X: 10, Y: 0}, CollisionArea: CollisionArea{X: 5, Y: 10}, IsVisible: true},
-	{Position: Vector{X: 17, Y: 15}, CollisionArea: CollisionArea{X: 13, Y: 3}, IsVisible: true},
+func __read_map_objects() []MapObject {
+	b, err := os.ReadFile("map.json")
+	if err != nil {
+		panic(err)
+	}
+	var mos []MapObject
+	err = json.Unmarshal(b, &mos)
+	if err != nil {
+		panic(err)
+	}
 
-	// Map borders
-	{Position: Vector{X: -1, Y: -1}, CollisionArea: CollisionArea{X: FieldMaxX + 2, Y: 1}},                    // Bottom
-	{Position: Vector{X: -1, Y: FieldMaxY}, CollisionArea: CollisionArea{X: FieldMaxX + 2, Y: FieldMaxY + 2}}, // Top
-	{Position: Vector{X: -1, Y: -1}, CollisionArea: CollisionArea{X: 1, Y: FieldMaxY + 2}},                    // Left
-	{Position: Vector{X: FieldMaxX, Y: -1}, CollisionArea: CollisionArea{X: FieldMaxX + 2, Y: FieldMaxY + 2}}, // Right
+	// Map invisible borders
+	mos = append(mos,
+		MapObject{Position: Vector{X: -1, Y: -1}, CollisionArea: CollisionArea{X: FieldMaxX + 2, Y: 1}},                    // Bottom
+		MapObject{Position: Vector{X: -1, Y: FieldMaxY}, CollisionArea: CollisionArea{X: FieldMaxX + 2, Y: FieldMaxY + 2}}, // Top
+		MapObject{Position: Vector{X: -1, Y: -1}, CollisionArea: CollisionArea{X: 1, Y: FieldMaxY + 2}},                    // Left
+		MapObject{Position: Vector{X: FieldMaxX, Y: -1}, CollisionArea: CollisionArea{X: FieldMaxX + 2, Y: FieldMaxY + 2}}, // Right
+	)
+	return mos
 }
+
+var MapObjects = __read_map_objects()
