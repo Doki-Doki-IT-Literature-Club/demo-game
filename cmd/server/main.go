@@ -13,16 +13,15 @@ import (
 )
 
 const (
-	timeScale          = 0.25
-	gameTick           = 100 * timeScale * time.Millisecond
+	gameTick           = 20 * time.Millisecond
 	defaultPort        = 8000
-	XSLOW              = 0.2 * timeScale
-	YSLOW              = 0.2 * timeScale
-	MAX_X_SPEED        = 2.3 * timeScale
+	XSLOW              = 0.2
+	YSLOW              = 0.2
+	MAX_X_SPEED        = 2.3
 	FRICTION_BOUNDARY  = 0.7
-	PLAYER_X_SPEED_INC = 2.3 * timeScale
-	PLAYER_Y_SPEED_INC = 4 * timeScale
-	GRAVITY_SPEED_INC  = 0.7 * timeScale
+	PLAYER_X_SPEED_INC = 2.3
+	PLAYER_Y_SPEED_INC = 4
+	GRAVITY_SPEED_INC  = 0.7
 )
 
 type ClinetConn struct {
@@ -356,12 +355,15 @@ func (ge *GameEngine) Run() {
 		}
 	}()
 
+	t := time.Now()
 	for range ticker.C {
+		fmt.Printf("elapsed: %d\n", time.Since(t).Milliseconds())
 		ge.applyCommands()
 		ge.calculateState()
 		for _, cli := range ge.conns {
 			cli.write <- ge.state
 		}
+		t = time.Now()
 	}
 }
 

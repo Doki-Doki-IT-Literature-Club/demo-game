@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"slices"
+	"time"
 
 	types "github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
 	tea "github.com/charmbracelet/bubbletea"
@@ -80,6 +81,9 @@ func receiveState(pch <-chan types.GameState) tea.Cmd {
 	}
 }
 
+var prevRender time.Time = time.Now()
+var maxrenderms int64 = 0
+
 type LocalGame struct {
 	field_x        int
 	field_y        int
@@ -91,7 +95,10 @@ type LocalGame struct {
 }
 
 func (g *LocalGame) getInterfaceRow() string {
-	debugInfo := fmt.Sprintf("Players: %d, projectiles: %d\n", len(g.currentState.Players), len(g.currentState.Projectiles))
+	elapsed := time.Since(prevRender).Milliseconds()
+	maxrenderms = max(maxrenderms, elapsed)
+	debugInfo := fmt.Sprintf("Players: %d, projectiles: %d, time from prev render (ms): %d, max render time (ms): %d\n", len(g.currentState.Players), len(g.currentState.Projectiles), elapsed, maxrenderms)
+	prevRender = time.Now()
 	interfaceString := "INTERFACE HERE"
 	localPlyaer, exists := g.currentState.Players[g.playerID]
 	if exists {
@@ -141,11 +148,12 @@ func (g *LocalGame) Render() string {
 		}
 	}
 
-	res := g.getInterfaceRow()
+	res := ""
 	slices.Reverse(field)
 	for _, row := range field {
 		res += string(row) + "\n"
 	}
+	res += g.getInterfaceRow()
 	return res
 }
 
@@ -163,7 +171,7 @@ func connectToServer(serverAddress string) (Connection, types.InitializationData
 	fmt.Println("Connected to", serverAddress)
 	initializationData := types.InitializationDataFromBytes(conn)
 
-	gameStateChannel := make(chan types.GameState)
+	gameStateChannel := make(chan types.GameState, 10)
 	go func() {
 		for {
 			gs := types.GameStateFromBytes(conn)
