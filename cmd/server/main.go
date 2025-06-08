@@ -13,12 +13,15 @@ import (
 )
 
 const (
-	gameTick          = 100 * time.Millisecond
-	defaultPort       = 8000
-	XSLOW             = 0.1
-	YSLOW             = 0.1
-	MAX_X_SPEED       = 7
-	FRICTION_BOUNDARY = 0.7
+	gameTick           = 100 * time.Millisecond
+	defaultPort        = 8000
+	XSLOW              = 0.1
+	YSLOW              = 0.1
+	MAX_X_SPEED        = 7
+	FRICTION_BOUNDARY  = 0.7
+	PLAYER_X_SPEED_INC = 2
+	PLAYER_Y_SPEED_INC = 4
+	GRAVITY_SPEED_INC  = 2
 )
 
 type ClinetConn struct {
@@ -243,7 +246,7 @@ func (ge *GameEngine) MoveObject(obj types.MovableObject) types.CollidableObject
 func (ge *GameEngine) calculateState() {
 	for _, player := range ge.state.Players {
 		// "gravity"
-		player.Speed.Y -= 2
+		player.Speed.Y -= GRAVITY_SPEED_INC
 
 		fmt.Printf("%s\n", player.ToString())
 
@@ -301,23 +304,23 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	}
 	switch cmd.command {
 	case types.UP:
-		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: 4})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: PLAYER_Y_SPEED_INC})
 		// TODO: update player direction, don't set Rune
 		player.ViewDirection = types.D_UP
 	case types.DOWN:
-		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -4})
+		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -PLAYER_Y_SPEED_INC})
 		player.ViewDirection = types.D_DOWN
 	case types.LEFT:
 		if player.Speed.X < -MAX_X_SPEED {
 			break
 		}
-		player.Speed = player.Speed.Add(types.Vector{X: -2, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: -PLAYER_X_SPEED_INC, Y: 0})
 		player.ViewDirection = types.D_LEFT
 	case types.RIGHT:
 		if player.Speed.X > MAX_X_SPEED {
 			break
 		}
-		player.Speed = player.Speed.Add(types.Vector{X: 2, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: PLAYER_X_SPEED_INC, Y: 0})
 		player.ViewDirection = types.D_RIGHT
 	case types.SHOOT:
 		ge.AddProjectile(
