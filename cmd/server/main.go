@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	timeScale          = 0.5
+	timeScale          = 0.25
 	gameTick           = 100 * timeScale * time.Millisecond
 	defaultPort        = 8000
 	XSLOW              = 0.2 * timeScale
@@ -37,6 +37,7 @@ type engineCommand struct {
 type GameEngine struct {
 	newPlayerID     types.ObjectID
 	newProjectileID types.ObjectID
+	playerCommands  []engineCommand
 
 	conns       map[types.ObjectID]*ClinetConn
 	state       types.GameState
@@ -298,6 +299,21 @@ func (ge *GameEngine) calculateState() {
 	}
 }
 
+func (ge *GameEngine) saveCommand(cmd engineCommand) {
+	ge.mu.Lock()
+	defer ge.mu.Unlock()
+	ge.playerCommands = append(ge.playerCommands, cmd)
+}
+
+func (ge *GameEngine) applyCommands() {
+	ge.mu.Lock()
+	defer ge.mu.Unlock()
+	for _, c := range ge.playerCommands {
+		ge.applyCommand(c)
+	}
+	clear(ge.playerCommands)
+}
+
 func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	player, ok := ge.state.Players[cmd.playerID]
 	if !ok {
@@ -333,16 +349,18 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 
 func (ge *GameEngine) Run() {
 	ticker := time.NewTicker(gameTick)
-	for {
-		select {
-		case ec := <-ge.engineInput:
+	go func() {
+		for ec := range ge.engineInput {
 			//fmt.Printf("new command: %+v\n", ec)
-			ge.applyCommand(ec)
-		case <-ticker.C:
-			ge.calculateState()
-			for _, cli := range ge.conns {
-				cli.write <- ge.state
-			}
+			ge.saveCommand(ec)
+		}
+	}()
+
+	for range ticker.C {
+		ge.applyCommands()
+		ge.calculateState()
+		for _, cli := range ge.conns {
+			cli.write <- ge.state
 		}
 	}
 }
