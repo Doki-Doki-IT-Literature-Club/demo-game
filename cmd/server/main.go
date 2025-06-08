@@ -13,15 +13,16 @@ import (
 )
 
 const (
-	gameTick           = 100 * time.Millisecond
+	timeScale          = 0.5
+	gameTick           = 100 * timeScale * time.Millisecond
 	defaultPort        = 8000
-	XSLOW              = 0.1
-	YSLOW              = 0.1
-	MAX_X_SPEED        = 7
+	XSLOW              = 0.2 * timeScale
+	YSLOW              = 0.2 * timeScale
+	MAX_X_SPEED        = 2.3 * timeScale
 	FRICTION_BOUNDARY  = 0.7
-	PLAYER_X_SPEED_INC = 2
-	PLAYER_Y_SPEED_INC = 4
-	GRAVITY_SPEED_INC  = 2
+	PLAYER_X_SPEED_INC = 2.3 * timeScale
+	PLAYER_Y_SPEED_INC = 4 * timeScale
+	GRAVITY_SPEED_INC  = 0.7 * timeScale
 )
 
 type ClinetConn struct {
@@ -58,7 +59,7 @@ func (ge *GameEngine) addPlayer(conn *ClinetConn) types.ObjectID {
 			X: float64(len(ge.state.Players)),
 			Y: float64(len(ge.state.Players)),
 		},
-		CollisionArea: types.CollisionArea{X: 1, Y: 1},
+		CollisionArea: types.CollisionArea{X: 0.9, Y: 0.9},
 		HP:            5,
 	}
 	return newID
@@ -96,7 +97,7 @@ func (ge *GameEngine) disconnectPlayer(playerID types.ObjectID) {
 }
 
 func (ge *GameEngine) HandleConnection(conn net.Conn) {
-	fmt.Printf("New connection: %v\n", conn)
+	//fmt.Printf("New connection: %v\n", conn)
 	write := make(chan types.GameState)
 	cliConn := &ClinetConn{write}
 	playerID := ge.addPlayer(cliConn)
@@ -140,9 +141,9 @@ func (ge *GameEngine) detectCollision(
 ) types.CollidableObject {
 	possibleCollisionBox := currentBox.Add(movement)
 
-	fmt.Printf("Possible collision box: %s\n", possibleCollisionBox.ToString())
-	fmt.Printf("Last possible collision box: %s\n", currentBox.ToString())
-	fmt.Printf("Movment vector: %+v\n", movement.ToString())
+	//fmt.Printf("Possible collision box: %s\n", possibleCollisionBox.ToString())
+	//fmt.Printf("Last possible collision box: %s\n", currentBox.ToString())
+	//fmt.Printf("Movment vector: %+v\n", movement.ToString())
 
 	for _, mo := range ge.state.MapObjects {
 		moCollisionBox := mo.CollisionArea.ToCollisionBox(mo.Position)
@@ -172,12 +173,12 @@ func getSpeedsAfterCollision(
 	collidedWithBox := collidesWith.GetCollisionArea().ToCollisionBox(collidesWith.GetPosition())
 	if collidedWithBox.IntersectsWithX(current) {
 		// Already was within X bounds, meaning collision happend during Y movement
-		fmt.Printf("* Y Collision detected with %s\n", collidedWithBox.ToString())
+		//fmt.Printf("* Y Collision detected with %s\n", collidedWithBox.ToString())
 		speed.Y = 0
 		stepVector.Y = 0
 	} else if collidedWithBox.IntersectsWithY(current) {
 		// Already was within Y bounds, meaning collision happend during X movement
-		fmt.Printf("* X Collision detected with %s\n", collidedWithBox.ToString())
+		//fmt.Printf("* X Collision detected with %s\n", collidedWithBox.ToString())
 		speed.X = 0
 		stepVector.X = 0
 	} else {
@@ -186,7 +187,7 @@ func getSpeedsAfterCollision(
 		speed.Y = 0
 		stepVector.X = 0
 		stepVector.Y = 0
-		fmt.Printf("Diagonal collision with %s\n", collidedWithBox.ToString())
+		//fmt.Printf("Diagonal collision with %s\n", collidedWithBox.ToString())
 	}
 	return speed, stepVector
 }
@@ -248,7 +249,7 @@ func (ge *GameEngine) calculateState() {
 		// "gravity"
 		player.Speed.Y -= GRAVITY_SPEED_INC
 
-		fmt.Printf("%s\n", player.ToString())
+		//fmt.Printf("%s\n", player.ToString())
 
 		ge.MoveObject(player)
 
@@ -275,11 +276,11 @@ func (ge *GameEngine) calculateState() {
 			}
 		}
 		if player.Speed.Y > 0 {
-			slowY := math.Pow(player.Speed.X, 2) * YSLOW
+			slowY := math.Pow(player.Speed.Y, 2) * YSLOW
 			newSpeed.Y = player.Speed.Y - slowY
 		}
 		if player.Speed.Y < 0 {
-			slowY := math.Pow(player.Speed.X, 2) * YSLOW
+			slowY := math.Pow(player.Speed.Y, 2) * YSLOW
 			newSpeed.Y = player.Speed.Y - -slowY
 		}
 
@@ -287,10 +288,10 @@ func (ge *GameEngine) calculateState() {
 	}
 
 	for _, proj := range ge.state.Projectiles {
-		fmt.Printf("Projectile %s\n", proj.Position.ToString())
+		//fmt.Printf("Projectile %s\n", proj.Position.ToString())
 		collidesWith := ge.MoveObject(proj)
 		if collidesWith != nil {
-			fmt.Printf("Collides with: %v\n", collidesWith)
+			//fmt.Printf("Collides with: %v\n", collidesWith)
 			collidesWith.OnCollision(proj)
 			ge.removeProjectile(proj.ID)
 		}
@@ -335,7 +336,7 @@ func (ge *GameEngine) Run() {
 	for {
 		select {
 		case ec := <-ge.engineInput:
-			fmt.Printf("new command: %+v\n", ec)
+			//fmt.Printf("new command: %+v\n", ec)
 			ge.applyCommand(ec)
 		case <-ticker.C:
 			ge.calculateState()
@@ -369,7 +370,7 @@ func main() {
 
 	addr := "0.0.0.0:" + port
 
-	fmt.Printf("starting server on %s\n", addr)
+	//fmt.Printf("starting server on %s\n", addr)
 
 	ge := RunGameEngine()
 
