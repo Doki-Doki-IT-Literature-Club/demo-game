@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"net"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -306,11 +308,13 @@ func (ge *GameEngine) saveCommand(cmd engineCommand) {
 
 func (ge *GameEngine) applyCommands() {
 	ge.mu.Lock()
-	defer ge.mu.Unlock()
-	for _, c := range ge.playerCommands {
+	commandsToApply := slices.Clone(ge.playerCommands)
+	clear(ge.playerCommands)
+	ge.mu.Unlock()
+
+	for _, c := range commandsToApply {
 		ge.applyCommand(c)
 	}
-	clear(ge.playerCommands)
 }
 
 func (ge *GameEngine) applyCommand(cmd engineCommand) {
@@ -341,7 +345,10 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	case types.SHOOT:
 		ge.AddProjectile(
 			player.Position.Add(player.ViewDirection.AsVector()),
-			player.ViewDirection.AsVector().Multiply(2.0),
+			player.ViewDirection.AsVector().Multiply(2.0).Add(types.Vector{
+				X: 0,
+				Y: rand.Float64() - 0.5,
+			}),
 		)
 	}
 }
