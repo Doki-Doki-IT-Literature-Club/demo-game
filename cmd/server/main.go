@@ -13,15 +13,15 @@ import (
 )
 
 const (
-	gameTick           = 20 * time.Millisecond
+	gameTick           = 40 * time.Millisecond
 	defaultPort        = 8000
-	XSLOW              = 0.2
-	YSLOW              = 0.2
-	MAX_X_SPEED        = 2.3
+	XSLOW              = 0.1
+	YSLOW              = 0.1
+	MAX_X_SPEED        = 1
 	FRICTION_BOUNDARY  = 0.7
-	PLAYER_X_SPEED_INC = 2.3
-	PLAYER_Y_SPEED_INC = 4
-	GRAVITY_SPEED_INC  = 0.7
+	PLAYER_X_SPEED_INC = 0.7
+	PLAYER_Y_SPEED_INC = 2
+	GRAVITY_SPEED_INC  = 0.2
 )
 
 type ClinetConn struct {
