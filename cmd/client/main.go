@@ -75,9 +75,26 @@ func (m model) View() string {
 	return m.game.Render()
 }
 
-func receiveState(pch <-chan types.GameState) tea.Cmd {
+func receiveState(gamestateChan <-chan types.GameState) tea.Cmd {
 	return func() tea.Msg {
-		return <-pch
+		sleepDur := 20 * time.Millisecond
+		var state types.GameState
+		t := time.NewTicker(sleepDur)
+		gotState := false
+
+		for {
+			select {
+			case s, ok := <-gamestateChan:
+				if ok {
+					state = s
+					gotState = true
+				}
+			case <-t.C:
+				if gotState {
+					return state
+				}
+			}
+		}
 	}
 }
 
@@ -99,7 +116,7 @@ func (g *LocalGame) getInterfaceRow() string {
 	maxrenderms = max(maxrenderms, elapsed)
 	debugInfo := fmt.Sprintf("Players: %d, projectiles: %d, time from prev render (ms): %d, max render time (ms): %d\n", len(g.currentState.Players), len(g.currentState.Projectiles), elapsed, maxrenderms)
 	prevRender = time.Now()
-	interfaceString := "INTERFACE HERE"
+	interfaceString := "INTERFACE HERE\n"
 	localPlyaer, exists := g.currentState.Players[g.playerID]
 	if exists {
 		interfaceString = fmt.Sprintf("HP: %d\n", localPlyaer.HP)
