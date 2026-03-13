@@ -12,6 +12,8 @@ Simple online game with terminal rendering
 # TODO:
 
 ```
+!!! MAKE IT ENJOYABLE
+
 - [X] walls
 - [x] directions
 - [x] projectiles simple
@@ -29,4 +31,5 @@ Simple online game with terminal rendering
 - [ ] hug the wall (move as close as possible when step vector is inside the wall)
 - [ ] control sum for server package (?)
 - [ ] camera rendering based on player position
+- [ ] Make UDP versioin. Just for lools
 ```
