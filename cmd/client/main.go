@@ -7,8 +7,8 @@ import (
 	"slices"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	types "github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 const (
@@ -77,8 +77,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) View() string {
-	return m.game.Render()
+func (m model) View() tea.View {
+	return tea.NewView(m.game.Render())
 }
 
 func receiveState(gamestateChan <-chan types.GameState) tea.Cmd {
@@ -126,7 +126,12 @@ func (g *LocalGame) getInterfaceRow() string {
 	interfaceString := "INTERFACE HERE\n"
 	localPlyaer, exists := g.currentState.Players[g.playerID]
 	if exists {
-		interfaceString = fmt.Sprintf("HP: %d, Keys pressed: %d\n", localPlyaer.HP, g.keysPressed)
+		interfaceString = fmt.Sprintf("HP: %d, Coords: %f.2:%f.2, Keys pressed: %d\n",
+			localPlyaer.HP,
+			localPlyaer.Position.X,
+			localPlyaer.Position.Y,
+			g.keysPressed,
+		)
 	}
 	return fmt.Sprintf("%s%s", debugInfo, interfaceString)
 }
