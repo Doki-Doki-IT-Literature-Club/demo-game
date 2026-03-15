@@ -27,13 +27,14 @@ type Connection struct {
 
 func initialModel(conn Connection, initData types.InitializationData) model {
 	return model{
-		LocalGame{
+		game: LocalGame{
 			field_x:        types.FieldMaxX,
 			field_y:        types.FieldMaxY,
 			emptyFiledRune: ' ',
 			playerID:       initData.PlayerID,
 			connection:     conn,
 			mapObjects:     types.MapObjects,
+			keysPressed:    0,
 		},
 	}
 }
@@ -51,14 +52,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
-		case "shift+right":
+		case "shift+right", "L":
 			m.game.SendCommand(types.RIGHT_RUN)
-		case "shift+left":
+		case "shift+left", "H":
 			m.game.SendCommand(types.LEFT_RUN)
-		case "up", "k":
+		case "up", "k", "shift+up", "K":
 			m.game.SendCommand(types.UP)
 			return m, nil
-		case "down", "j":
+		case "down", "j", "shift+down", "J":
 			m.game.SendCommand(types.DOWN)
 			return m, nil
 		case "left", "h":
@@ -68,6 +69,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.game.SendCommand(types.RIGHT)
 			return m, nil
 		case "e":
+			m.game.keysPressed++
 			m.game.SendCommand(types.SHOOT)
 			return m, nil
 		}
@@ -113,6 +115,7 @@ type LocalGame struct {
 	connection     Connection
 	playerID       types.ObjectID
 	mapObjects     []types.MapObject
+	keysPressed    int
 }
 
 func (g *LocalGame) getInterfaceRow() string {
@@ -123,7 +126,7 @@ func (g *LocalGame) getInterfaceRow() string {
 	interfaceString := "INTERFACE HERE\n"
 	localPlyaer, exists := g.currentState.Players[g.playerID]
 	if exists {
-		interfaceString = fmt.Sprintf("HP: %d\n", localPlyaer.HP)
+		interfaceString = fmt.Sprintf("HP: %d, Keys pressed: %d\n", localPlyaer.HP, g.keysPressed)
 	}
 	return fmt.Sprintf("%s%s", debugInfo, interfaceString)
 }
