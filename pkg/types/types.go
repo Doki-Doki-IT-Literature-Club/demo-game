@@ -14,11 +14,13 @@ type ObjectID uint32
 type Command byte
 
 const (
-	UP    = 0x01
-	DOWN  = 0x02
-	LEFT  = 0x03
-	RIGHT = 0x04
-	SHOOT = 0x05
+	UP        = 0x01
+	DOWN      = 0x02
+	LEFT      = 0x03
+	LEFT_RUN  = 0x04
+	RIGHT     = 0x05
+	RIGHT_RUN = 0x06
+	SHOOT     = 0x07
 )
 
 type Direction uint32

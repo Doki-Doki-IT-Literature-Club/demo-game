@@ -15,15 +15,16 @@ import (
 )
 
 const (
-	gameTick           = 40 * time.Millisecond
-	defaultPort        = 8000
-	XSLOW              = 0.1
-	YSLOW              = 0.1
-	MAX_X_SPEED        = 1
-	FRICTION_BOUNDARY  = 0.7
-	PLAYER_X_SPEED_INC = 1.7
-	PLAYER_Y_SPEED_INC = 2
-	GRAVITY_SPEED_INC  = 0.2
+	gameTick                = 40 * time.Millisecond
+	defaultPort             = 8000
+	XSLOW                   = 0.1
+	YSLOW                   = 0.1
+	MAX_X_SPEED             = 1
+	FRICTION_BOUNDARY       = 0.7
+	PLAYER_X_SPEED_INC_RUN  = 1.7
+	PLAYER_X_SPEED_INC_STEP = 0.7
+	PLAYER_Y_SPEED_INC      = 2
+	GRAVITY_SPEED_INC       = 0.2
 )
 
 type ClinetConn struct {
@@ -325,22 +326,29 @@ func (ge *GameEngine) applyCommand(cmd engineCommand) {
 	switch cmd.command {
 	case types.UP:
 		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: PLAYER_Y_SPEED_INC})
-		// TODO: update player direction, don't set Rune
 		player.ViewDirection = types.D_UP
 	case types.DOWN:
 		player.Speed = player.Speed.Add(types.Vector{X: 0, Y: -PLAYER_Y_SPEED_INC})
 		player.ViewDirection = types.D_DOWN
+	case types.RIGHT:
+		// player.Speed = player.Speed.Add(types.Vector{X: PLAYER_X_SPEED_INC_STEP, Y: 0})
+		player.Position.X += 1
+		player.ViewDirection = types.D_RIGHT
 	case types.LEFT:
+		// player.Speed = player.Speed.Add(types.Vector{X: -PLAYER_X_SPEED_INC_STEP, Y: 0})
+		player.Position.X -= 1
+		player.ViewDirection = types.D_LEFT
+	case types.LEFT_RUN:
 		if player.Speed.X < -MAX_X_SPEED {
 			break
 		}
-		player.Speed = player.Speed.Add(types.Vector{X: -PLAYER_X_SPEED_INC, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: -PLAYER_X_SPEED_INC_RUN, Y: 0})
 		player.ViewDirection = types.D_LEFT
-	case types.RIGHT:
+	case types.RIGHT_RUN:
 		if player.Speed.X > MAX_X_SPEED {
 			break
 		}
-		player.Speed = player.Speed.Add(types.Vector{X: PLAYER_X_SPEED_INC, Y: 0})
+		player.Speed = player.Speed.Add(types.Vector{X: PLAYER_X_SPEED_INC_RUN, Y: 0})
 		player.ViewDirection = types.D_RIGHT
 	case types.SHOOT:
 		ge.AddProjectile(

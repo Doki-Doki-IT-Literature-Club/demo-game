@@ -51,6 +51,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "shift+right":
+			m.game.SendCommand(types.RIGHT_RUN)
+		case "shift+left":
+			m.game.SendCommand(types.LEFT_RUN)
 		case "up", "k":
 			m.game.SendCommand(types.UP)
 			return m, nil
