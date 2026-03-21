@@ -41,7 +41,7 @@ type GameEngine struct {
 	playerCommands  []engineCommand
 
 	conns       map[types.ObjectID]*ClinetConn
-	state       types.GameState
+	State       types.GameState
 	engineInput chan engineCommand
 
 	mu sync.Mutex
@@ -56,12 +56,12 @@ func (ge *GameEngine) addPlayer(conn *ClinetConn) types.ObjectID {
 	newID := ge.newPlayerID
 	ge.newPlayerID++
 	ge.conns[newID] = conn
-	ge.state.Players[newID] = &types.Player{
+	ge.State.Players[newID] = &types.Player{
 		ID:            newID,
 		ViewDirection: types.D_RIGHT,
 		Position: types.Vector{
-			X: float64(len(ge.state.Players)),
-			Y: float64(len(ge.state.Players)),
+			X: float64(len(ge.State.Players)),
+			Y: float64(len(ge.State.Players)),
 		},
 		CollisionArea: types.CollisionArea{X: 0.9, Y: 0.9},
 		HP:            5,
@@ -75,7 +75,7 @@ func (ge *GameEngine) AddProjectile(position types.Vector, speed types.Vector) {
 
 	newID := ge.newProjectileID
 	ge.newProjectileID++
-	ge.state.Projectiles[newID] = &types.Projectile{
+	ge.State.Projectiles[newID] = &types.Projectile{
 		ID:            newID,
 		Rune:          '•',
 		Position:      position,
@@ -88,14 +88,14 @@ func (ge *GameEngine) removeProjectile(projectileID types.ObjectID) {
 	ge.mu.Lock()
 	defer ge.mu.Unlock()
 
-	delete(ge.state.Projectiles, projectileID)
+	delete(ge.State.Projectiles, projectileID)
 }
 
 func (ge *GameEngine) disconnectPlayer(playerID types.ObjectID) {
 	ge.mu.Lock()
 	defer ge.mu.Unlock()
 
-	delete(ge.state.Players, playerID)
+	delete(ge.State.Players, playerID)
 	delete(ge.conns, playerID)
 
 }
@@ -149,14 +149,14 @@ func (ge *GameEngine) detectCollision(
 	//fmt.Printf("Last possible collision box: %s\n", currentBox.ToString())
 	//fmt.Printf("Movment vector: %+v\n", movement.ToString())
 
-	for _, mo := range ge.state.MapObjects {
+	for _, mo := range ge.State.MapObjects {
 		moCollisionBox := mo.CollisionArea.ToCollisionBox(mo.Position)
 		if moCollisionBox.IntersectsWith(possibleCollisionBox) {
 			return &mo
 		}
 	}
 
-	for _, p := range ge.state.Players {
+	for _, p := range ge.State.Players {
 		if p.ID == selfID {
 			continue
 		}
@@ -249,7 +249,7 @@ func (ge *GameEngine) MoveObject(obj types.MovableObject) types.CollidableObject
 }
 
 func (ge *GameEngine) calculateState() {
-	for _, player := range ge.state.Players {
+	for _, player := range ge.State.Players {
 		// "gravity"
 		player.Speed.Y -= GRAVITY_SPEED_INC
 
@@ -291,7 +291,7 @@ func (ge *GameEngine) calculateState() {
 		player.Speed = newSpeed
 	}
 
-	for _, proj := range ge.state.Projectiles {
+	for _, proj := range ge.State.Projectiles {
 		//fmt.Printf("Projectile %s\n", proj.Position.ToString())
 		collidesWith := ge.MoveObject(proj)
 		if collidesWith != nil {
@@ -320,7 +320,7 @@ func (ge *GameEngine) applyCommands() {
 }
 
 func (ge *GameEngine) applyCommand(cmd engineCommand) {
-	player, ok := ge.state.Players[cmd.playerID]
+	player, ok := ge.State.Players[cmd.playerID]
 	if !ok {
 		return
 	}
@@ -379,7 +379,7 @@ func (ge *GameEngine) Run() {
 		ge.applyCommands()
 		ge.calculateState()
 		for _, cli := range ge.conns {
-			cli.write <- ge.state
+			cli.write <- ge.State
 		}
 		t = time.Now()
 	}
@@ -387,7 +387,7 @@ func (ge *GameEngine) Run() {
 
 func RunGameEngine(stringWriter io.StringWriter) *GameEngine {
 	ge := &GameEngine{
-		state: types.GameState{
+		State: types.GameState{
 			Players:     types.PlayerMap{},
 			Projectiles: types.ProjectileMap{},
 			MapObjects:  types.MapObjects,
@@ -402,13 +402,11 @@ func RunGameEngine(stringWriter io.StringWriter) *GameEngine {
 
 func RunServer(
 	port string,
-	stringWriter io.StringWriter,
+	ge *GameEngine,
 ) {
 	if port == "" {
 		port = defaultPort
 	}
-
-	ge := RunGameEngine(stringWriter)
 
 	addr := "0.0.0.0:" + port
 
@@ -416,7 +414,7 @@ func RunServer(
 	if err != nil {
 		panic(err)
 	}
-	stringWriter.WriteString(fmt.Sprintf("Running on %s", addr))
+	ge.LogWriter.WriteString(fmt.Sprintf("Running on %s", addr))
 
 	for {
 		conn, err := listner.Accept()

@@ -4,24 +4,40 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	server "github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/server"
+	"github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
 )
 
 type model struct {
 	logBuffer *strings.Builder
+	ge        *server.GameEngine
 }
 
-func initialModel() model {
-	logBuffer := &strings.Builder{}
-
-	m := model{logBuffer}
+func initialModel(ge *server.GameEngine, logBuffer *strings.Builder) model {
+	m := model{logBuffer, ge}
 	return m
 }
 
+type InterfaceUpdate = int
+
+func interfaceTimer(logBuffer *strings.Builder) tea.Cmd {
+	return func() tea.Msg {
+		sleepDur := 20 * time.Millisecond
+		t := time.NewTicker(sleepDur)
+		for range t.C {
+			if logBuffer.Len() > 0 {
+				return InterfaceUpdate(1)
+			}
+		}
+		return InterfaceUpdate(0)
+	}
+}
+
 func (m model) Init() tea.Cmd {
-	return nil
+	return interfaceTimer(m.logBuffer)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -29,6 +45,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		return m, nil
 
+	case InterfaceUpdate:
+		return m, interfaceTimer(m.logBuffer)
 	case tea.KeyPressMsg:
 		switch keypress := msg.String(); keypress {
 		case "q", "ctrl+c":
@@ -41,8 +59,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func getInterfaceString(gameState *types.GameState) string {
+	playerInfo := []string{"Players:"}
+	for _, player := range gameState.Players {
+		playerInfo = append(playerInfo, fmt.Sprintf("ID: %v %v HP: %v",
+			player.ID, player.Position.ToString(), player.HP))
+	}
+	return strings.Join(playerInfo, "\n")
+}
+
 func (m model) View() tea.View {
-	return tea.NewView(m.logBuffer.String())
+	serverInterface := getInterfaceString(&m.ge.State)
+	serverInterface = fmt.Sprintf("%v\nLogs:\n%v", serverInterface, "AAA")
+	return tea.NewView(serverInterface)
 }
 
 func main() {
@@ -52,8 +81,10 @@ func main() {
 		port = os.Args[1]
 	}
 
-	m := initialModel()
-	go server.RunServer(port, m.logBuffer)
+	logBuffer := &strings.Builder{}
+	ge := server.RunGameEngine(logBuffer)
+	m := initialModel(ge, logBuffer)
+	go server.RunServer(port, ge)
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
