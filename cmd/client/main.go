@@ -144,12 +144,12 @@ func (g *LocalGame) getInterfaceRow() string {
 
 func (g *LocalGame) Render() string {
 	field := make([][]rune, g.field_y)
+	row := make([]rune, g.field_x)
+	for x := range g.field_x {
+		row[x] = g.emptyFiledRune
+	}
 	for y := range g.field_y {
-		row := make([]rune, g.field_x)
-		for x := range g.field_x {
-			row[x] = g.emptyFiledRune
-		}
-		field[y] = row
+		field[y] = slices.Clone(row)
 	}
 
 	for _, p := range g.currentState.Players {
