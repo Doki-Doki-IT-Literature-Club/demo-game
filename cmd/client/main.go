@@ -121,15 +121,21 @@ type LocalGame struct {
 func (g *LocalGame) getInterfaceRow() string {
 	elapsed := time.Since(prevRender).Milliseconds()
 	maxrenderms = max(maxrenderms, elapsed)
-	debugInfo := fmt.Sprintf("Players: %d, projectiles: %d, time from prev render (ms): %d, max render time (ms): %d\n", len(g.currentState.Players), len(g.currentState.Projectiles), elapsed, maxrenderms)
+	debugInfo := fmt.Sprintf(
+		"[Tick: %d] Players: %d, projectiles: %d, time from prev render (ms): %d, max render time (ms): %d\n",
+		g.currentState.TickNumber,
+		len(g.currentState.Players),
+		len(g.currentState.Projectiles),
+		elapsed,
+		maxrenderms,
+	)
 	prevRender = time.Now()
 	interfaceString := "INTERFACE HERE\n"
 	localPlyaer, exists := g.currentState.Players[g.playerID]
 	if exists {
-		interfaceString = fmt.Sprintf("HP: %d, Coords: %f.2:%f.2, Keys pressed: %d\n",
+		interfaceString = fmt.Sprintf("HP: %d, Coords: %s, Keys pressed: %d\n",
 			localPlyaer.HP,
-			localPlyaer.Position.X,
-			localPlyaer.Position.Y,
+			localPlyaer.Position.ToString(),
 			g.keysPressed,
 		)
 	}
@@ -137,13 +143,13 @@ func (g *LocalGame) getInterfaceRow() string {
 }
 
 func (g *LocalGame) Render() string {
-	field := [][]rune{}
-	for range g.field_y {
-		row := []rune{}
-		for range g.field_x {
-			row = append(row, g.emptyFiledRune)
+	field := make([][]rune, g.field_y)
+	for y := range g.field_y {
+		row := make([]rune, g.field_x)
+		for x := range g.field_x {
+			row[x] = g.emptyFiledRune
 		}
-		field = append(field, row)
+		field[y] = row
 	}
 
 	for _, p := range g.currentState.Players {

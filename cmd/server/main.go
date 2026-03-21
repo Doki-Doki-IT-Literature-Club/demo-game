@@ -11,24 +11,33 @@ import (
 	"github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
 )
 
+type MyLogBuffer struct {
+	Logs []string
+}
+
+func (b *MyLogBuffer) WriteString(s string) (n int, err error) {
+	b.Logs = append(b.Logs, s)
+	return len(s), nil
+}
+
 type model struct {
-	logBuffer *strings.Builder
+	logBuffer *MyLogBuffer
 	ge        *server.GameEngine
 }
 
-func initialModel(ge *server.GameEngine, logBuffer *strings.Builder) model {
+func initialModel(ge *server.GameEngine, logBuffer *MyLogBuffer) model {
 	m := model{logBuffer, ge}
 	return m
 }
 
 type InterfaceUpdate = int
 
-func interfaceTimer(logBuffer *strings.Builder) tea.Cmd {
+func interfaceTimer(logBuffer *MyLogBuffer) tea.Cmd {
 	return func() tea.Msg {
-		sleepDur := 20 * time.Millisecond
+		sleepDur := 200 * time.Millisecond
 		t := time.NewTicker(sleepDur)
 		for range t.C {
-			if logBuffer.Len() > 0 {
+			if len(logBuffer.Logs) > 0 {
 				return InterfaceUpdate(1)
 			}
 		}
@@ -65,12 +74,16 @@ func getInterfaceString(gameState *types.GameState) string {
 		playerInfo = append(playerInfo, fmt.Sprintf("ID: %v %v HP: %v",
 			player.ID, player.Position.ToString(), player.HP))
 	}
-	return strings.Join(playerInfo, "\n")
+	res := fmt.Sprintf("Tick: %d\n", gameState.TickNumber)
+	res += strings.Join(playerInfo, "\n")
+
+	return res
 }
 
 func (m model) View() tea.View {
 	serverInterface := getInterfaceString(&m.ge.State)
-	serverInterface = fmt.Sprintf("%v\nLogs:\n%v", serverInterface, "AAA")
+	logs := strings.Join(m.logBuffer.Logs[max(0, len(m.logBuffer.Logs)-5):len(m.logBuffer.Logs)], "\n")
+	serverInterface = fmt.Sprintf("%v\nLogs:\n%v", serverInterface, logs)
 	return tea.NewView(serverInterface)
 }
 
@@ -81,7 +94,7 @@ func main() {
 		port = os.Args[1]
 	}
 
-	logBuffer := &strings.Builder{}
+	logBuffer := &MyLogBuffer{}
 	ge := server.RunGameEngine(logBuffer)
 	m := initialModel(ge, logBuffer)
 	go server.RunServer(port, ge)

@@ -21,6 +21,7 @@ Simple online game with terminal rendering
 - [x] fix collision boxes
 - [x] projectile collision with players
 - [x] map editor (?)
+- [ ] Profiler - why slow on my laptop?
 - [ ] pass map from server on init
 - [ ] do we want to shoot up / down? 
 - [ ] bullets hitting self when moving

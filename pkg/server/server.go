@@ -375,7 +375,8 @@ func (ge *GameEngine) Run() {
 
 	t := time.Now()
 	for range ticker.C {
-		ge.Log(fmt.Sprintf("elapsed: %d\n", time.Since(t).Milliseconds()))
+		ge.State.TickNumber++
+		ge.Log(fmt.Sprintf("elapsed: %d", time.Since(t).Milliseconds()))
 		ge.applyCommands()
 		ge.calculateState()
 		for _, cli := range ge.conns {

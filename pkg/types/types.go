@@ -348,10 +348,28 @@ func InitializationDataFromBytes(reader io.Reader) InitializationData {
 	return initializationData
 }
 
+type GameTick uint64
+
+func (gt GameTick) ToBytes() []byte {
+	b := [8]byte{}
+	binary.BigEndian.PutUint64(b[:], uint64(gt))
+	return b[:]
+}
+
+func (gt *GameTick) FillFromBytes(reader io.Reader) {
+	data := make([]byte, 8)
+	_, err := reader.Read(data)
+	if err != nil {
+		panic(err)
+	}
+	*gt = GameTick(binary.BigEndian.Uint64(data[:8]))
+}
+
 type GameState struct {
 	Players     PlayerMap
 	Projectiles ProjectileMap
 	MapObjects  []MapObject
+	TickNumber  GameTick
 }
 
 func (gs GameState) ToBytes() []byte {
@@ -359,6 +377,7 @@ func (gs GameState) ToBytes() []byte {
 
 	res = append(res, gs.Players.ToBytes()...)
 	res = append(res, gs.Projectiles.ToBytes()...)
+	res = append(res, gs.TickNumber.ToBytes()...)
 	return res
 }
 
@@ -368,7 +387,11 @@ func GameStateFromBytes(reader io.Reader) GameState {
 
 	projectileMap := ProjectileMap{}
 	projectileMap.FillFromBytes(reader)
-	gameState := GameState{Players: playerMap, Projectiles: projectileMap}
+
+	tickNumber := GameTick(0)
+	tickNumber.FillFromBytes(reader)
+
+	gameState := GameState{Players: playerMap, Projectiles: projectileMap, TickNumber: tickNumber}
 	return gameState
 }
 
