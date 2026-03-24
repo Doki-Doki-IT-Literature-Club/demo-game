@@ -21,7 +21,7 @@ const (
 )
 
 type model struct {
-	game LocalGame
+	game *LocalGame
 }
 
 type Connection struct {
@@ -31,7 +31,7 @@ type Connection struct {
 
 func initialModel(conn Connection, initData types.InitializationData) model {
 	return model{
-		game: LocalGame{
+		game: &LocalGame{
 			field_x:        types.FieldMaxX,
 			field_y:        types.FieldMaxY,
 			emptyFiledRune: ' ',
@@ -52,30 +52,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.GameState:
 		m.game.currentState = msg
 		return m, receiveState(m.game.connection.gameStateChan)
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
-		case "shift+right", "L":
-			m.game.SendCommand(types.RIGHT_RUN)
-		case "shift+left", "H":
-			m.game.SendCommand(types.LEFT_RUN)
-		case "up", "k", "shift+up", "K":
-			m.game.SendCommand(types.UP)
-			return m, nil
-		case "down", "j", "shift+down", "J":
-			m.game.SendCommand(types.DOWN)
-			return m, nil
-		case "left", "h":
-			m.game.SendCommand(types.LEFT)
-			return m, nil
-		case "right", "l":
-			m.game.SendCommand(types.RIGHT)
-			return m, nil
-		case "e":
-			m.game.keysPressed++
-			m.game.SendCommand(types.SHOOT)
-			return m, nil
 		}
 	}
 	return m, nil
@@ -218,7 +199,7 @@ func connectToServer(serverAddress string) (Connection, types.InitializationData
 		}
 	}()
 
-	commandChannel := make(chan types.Command)
+	commandChannel := make(chan types.Command, 128)
 	go func() {
 		for cmd := range commandChannel {
 			_, err := conn.Write([]byte{byte(cmd)})
@@ -231,6 +212,45 @@ func connectToServer(serverAddress string) (Connection, types.InitializationData
 	return Connection{gameStateChannel, commandChannel}, initializationData
 }
 
+// We don't want to render on controls (user movement, etc), because we
+// only want to redner state received from server.
+func controlsFilter(m tea.Model, msg tea.Msg) tea.Msg {
+	if _, ok := msg.(tea.QuitMsg); ok {
+		return msg
+	}
+
+	mdl := m.(model)
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "shift+right", "L":
+			mdl.game.SendCommand(types.RIGHT_RUN)
+			return nil
+		case "shift+left", "H":
+			mdl.game.SendCommand(types.LEFT_RUN)
+			return nil
+		case "up", "k", "shift+up", "K":
+			mdl.game.SendCommand(types.UP)
+			return nil
+		case "down", "j", "shift+down", "J":
+			mdl.game.SendCommand(types.DOWN)
+			return nil
+		case "left", "h":
+			mdl.game.SendCommand(types.LEFT)
+			return nil
+		case "right", "l":
+			mdl.game.SendCommand(types.RIGHT)
+			return nil
+		case "e":
+			mdl.game.keysPressed++
+			mdl.game.SendCommand(types.SHOOT)
+			return nil
+		}
+	}
+	return msg
+}
+
 func main() {
 	// go func() {
 	// 	http.ListenAndServe("localhost:6060", nil)
@@ -241,7 +261,7 @@ func main() {
 		serverAddress = os.Args[1]
 	}
 	conn, initData := connectToServer(serverAddress)
-	p := tea.NewProgram(initialModel(conn, initData))
+	p := tea.NewProgram(initialModel(conn, initData), tea.WithFilter(controlsFilter))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
