@@ -9,6 +9,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	types "github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
+	"net/http"
+	_ "net/http/pprof"
 )
 
 const (
@@ -228,6 +230,10 @@ func connectToServer(serverAddress string) (Connection, types.InitializationData
 }
 
 func main() {
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
+
 	serverAddress := defaultServerAddress
 	if len(os.Args) > 1 {
 		serverAddress = os.Args[1]
