@@ -5,12 +5,14 @@ import (
 	"net"
 	"os"
 	"slices"
+	"strings"
 	"time"
+
+	// "net/http"
+	// _ "net/http/pprof"
 
 	tea "charm.land/bubbletea/v2"
 	types "github.com/Doki-Doki-IT-Literature-Club/demo-game/pkg/types"
-	"net/http"
-	_ "net/http/pprof"
 )
 
 const (
@@ -185,13 +187,13 @@ func (g *LocalGame) Render() string {
 		}
 	}
 
-	res := ""
-	slices.Reverse(field)
-	for _, row := range field {
-		res += string(row) + "\n"
+	res := make([]string, g.field_y+1)
+
+	for i := g.field_y - 1; i >= 0; i-- {
+		res[g.field_y-i-1] = string(field[i])
 	}
-	res += g.getInterfaceRow()
-	return res
+	res[len(res)-1] = g.getInterfaceRow()
+	return strings.Join(res, "\n")
 }
 
 func (g *LocalGame) SendCommand(direction types.Command) {
@@ -230,9 +232,9 @@ func connectToServer(serverAddress string) (Connection, types.InitializationData
 }
 
 func main() {
-	go func() {
-		http.ListenAndServe("localhost:6060", nil)
-	}()
+	// go func() {
+	// 	http.ListenAndServe("localhost:6060", nil)
+	// }()
 
 	serverAddress := defaultServerAddress
 	if len(os.Args) > 1 {
