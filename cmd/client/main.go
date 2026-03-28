@@ -25,7 +25,7 @@ type model struct {
 }
 
 type Connection struct {
-	gameStateChan <-chan types.GameState
+	gameStateChan <-chan *types.GameState
 	commandsChan  chan<- types.Command
 }
 
@@ -49,7 +49,7 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case types.GameState:
+	case *types.GameState:
 		m.game.currentState = msg
 		return m, receiveState(m.game.connection.gameStateChan)
 
@@ -68,10 +68,10 @@ func (m model) View() tea.View {
 	return v
 }
 
-func receiveState(gamestateChan <-chan types.GameState) tea.Cmd {
+func receiveState(gamestateChan <-chan *types.GameState) tea.Cmd {
 	return func() tea.Msg {
 		sleepDur := 20 * time.Millisecond
-		var state types.GameState
+		var state *types.GameState
 		t := time.NewTicker(sleepDur)
 		gotState := false
 
@@ -98,7 +98,7 @@ type LocalGame struct {
 	field_x        int
 	field_y        int
 	emptyFiledRune rune
-	currentState   types.GameState
+	currentState   *types.GameState
 	connection     Connection
 	playerID       types.ObjectID
 	mapObjects     []types.MapObject
@@ -106,6 +106,9 @@ type LocalGame struct {
 }
 
 func (g *LocalGame) getInterfaceRow() string {
+	if g.currentState == nil {
+		return ""
+	}
 	elapsed := time.Since(prevRender).Milliseconds()
 	maxrenderms = max(maxrenderms, elapsed)
 	debugInfo := fmt.Sprintf(
@@ -139,22 +142,24 @@ func (g *LocalGame) Render() string {
 		field[y] = slices.Clone(row)
 	}
 
-	for _, p := range g.currentState.Players {
-		x := int(p.Position.X)
-		y := int(p.Position.Y)
-		if x < 0 || x > g.field_x || y < 0 || y > g.field_y {
-			continue
+	if g.currentState != nil {
+		for _, p := range g.currentState.Players {
+			x := int(p.Position.X)
+			y := int(p.Position.Y)
+			if x < 0 || x > g.field_x || y < 0 || y > g.field_y {
+				continue
+			}
+			field[y][x] = p.ViewDirection.AsRune()
 		}
-		field[y][x] = p.ViewDirection.AsRune()
-	}
 
-	for _, p := range g.currentState.Projectiles {
-		x := int(p.Position.X)
-		y := int(p.Position.Y)
-		if x < 0 || x > g.field_x || y < 0 || y > g.field_y {
-			continue
+		for _, p := range g.currentState.Projectiles {
+			x := int(p.Position.X)
+			y := int(p.Position.Y)
+			if x < 0 || x > g.field_x || y < 0 || y > g.field_y {
+				continue
+			}
+			field[y][x] = p.Rune
 		}
-		field[y][x] = p.Rune
 	}
 
 	for _, mo := range g.mapObjects {
@@ -194,11 +199,11 @@ func connectToServer(serverAddress string) (Connection, types.InitializationData
 	fmt.Println("Connected to", serverAddress)
 	initializationData := types.InitializationDataFromBytes(conn)
 
-	gameStateChannel := make(chan types.GameState, 128)
+	gameStateChannel := make(chan *types.GameState, 128)
 	go func() {
 		for {
 			gs := types.GameStateFromBytes(conn)
-			gameStateChannel <- gs
+			gameStateChannel <- &gs
 		}
 	}()
 
