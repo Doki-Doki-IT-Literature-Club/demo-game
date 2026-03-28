@@ -63,7 +63,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() tea.View {
-	return tea.NewView(m.game.Render())
+	v := tea.NewView(m.game.Render())
+	prevRender = time.Now()
+	return v
 }
 
 func receiveState(gamestateChan <-chan types.GameState) tea.Cmd {
@@ -114,11 +116,10 @@ func (g *LocalGame) getInterfaceRow() string {
 		elapsed,
 		maxrenderms,
 	)
-	prevRender = time.Now()
-	interfaceString := "INTERFACE HERE\n"
+	interfaceString := "INTERFACE HERE"
 	localPlyaer, exists := g.currentState.Players[g.playerID]
 	if exists {
-		interfaceString = fmt.Sprintf("HP: %d, Coords: %s, Keys pressed: %d\n",
+		interfaceString = fmt.Sprintf("HP: %d, Coords: %s, Keys pressed: %d ",
 			localPlyaer.HP,
 			localPlyaer.Position.ToString(),
 			g.keysPressed,
@@ -128,6 +129,7 @@ func (g *LocalGame) getInterfaceRow() string {
 }
 
 func (g *LocalGame) Render() string {
+	renderStartTime := time.Now()
 	field := make([][]rune, g.field_y)
 	row := make([]rune, g.field_x)
 	for x := range g.field_x {
@@ -173,7 +175,8 @@ func (g *LocalGame) Render() string {
 	for i := g.field_y - 1; i >= 0; i-- {
 		res[g.field_y-i-1] = string(field[i])
 	}
-	res[len(res)-1] = g.getInterfaceRow()
+	ir := g.getInterfaceRow()
+	res[len(res)-1] = ir + fmt.Sprintf(" FRT: %dms", time.Since(renderStartTime).Milliseconds())
 	return strings.Join(res, "\n")
 }
 
@@ -191,7 +194,7 @@ func connectToServer(serverAddress string) (Connection, types.InitializationData
 	fmt.Println("Connected to", serverAddress)
 	initializationData := types.InitializationDataFromBytes(conn)
 
-	gameStateChannel := make(chan types.GameState, 10)
+	gameStateChannel := make(chan types.GameState, 128)
 	go func() {
 		for {
 			gs := types.GameStateFromBytes(conn)
